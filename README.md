@@ -9,5 +9,5 @@ A collection of AI agent "skills" following the [OpenCode agent skills](https://
 **Setup a skill**
 
 ```zsh
-npx skills@latest add tkolleh/skills/ast-grep
+npx skills@latest add tkolleh/skills/ -g -a opencode -a claude-code
 ```
