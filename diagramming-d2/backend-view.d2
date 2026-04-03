@@ -1,0 +1,14 @@
+...@models
+**: suspend
+**: unsuspend {
+  &class: systembe
+}
+
+# Final diagram with entities and relationships
+direction: down
+
+api_service -> tx_db: {
+  label: "Commits Transaction"
+  style.stroke-dash: 5
+  style.stroke: "#2E8B57"
+}

@@ -1,0 +1,63 @@
+# title: |md
+#   # <Design Name/>
+#   Circa <Month Year/>
+# | {near: top-right}
+
+vars: {
+  d2-config: {
+    theme-id: 302
+    pad: 20
+    layout-engine: tala
+  }
+}
+
+# Styling
+# Styling is done using classes (tags in C4 vernacular) - Tags can be used to group entities e.g. `systembe` for all backend components, `systemdb` for all databases, `domain_actor` for all actors in the domain etc. - This allows us to easily apply consistent styling across the diagram and also makes it easier to maintain and update the diagram as the system evolves.
+classes: {
+  domain_grp: {
+    style: {
+      stroke: "#1971c2"
+      fill: "#e7f5ff"
+      border-radius: 6
+      font-color: black
+    }
+  }
+  domain_actor: {
+    style: {
+      fill: "lightsalmon"
+      stroke: "#FFC107"
+      border-radius: 5
+      font-color: black
+    }
+  }
+}
+
+# Model (entities)
+payment_domain: |md
+  ## Some Domain
+  [Software System]<br/>
+  Appropriaetely detailed description of the domain's purpose and responsibilities.
+| {
+  label.near: bottom-center
+  shape: rectangle
+  class: domain_grp
+}
+
+api_service: |md
+  ## Some API Service
+  [container: finagle typescript]<br/>
+  Appropriaetely detailed description of the service's purpose and responsibilities.
+| {
+  shape: rectangle
+  label.near: bottom-center
+  class: [systembe; domain_actor]
+}
+
+tx_db: |md
+  ## Some transactional database
+  [Container: Postgres]<br/>
+  Appropriaetely detailed description of the database's purpose and responsibilities.
+| {
+  shape: rectangle
+  class: [systembe; systemdb; domain_actor]
+}
