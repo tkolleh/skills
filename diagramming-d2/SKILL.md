@@ -51,11 +51,34 @@ You must generate code in this exact order to ensure compilation:
 3.  **Entity Inventory:** Define objects using dot notation (`Domain.Entity`). **No connections here.**
 4.  **Topology:** Define connections (`->`) in separate files after suspending unwanted classes.
 
+#### 4. White Background Color System
+
+**Always assume diagrams render on a white background.**
+
+D2's `style.font-color` only applies to a node's plain-text label. It does **NOT**
+cascade into `|md ... |` markdown blocks, which always render with dark default text.
+Dark fills on markdown nodes make content invisible on white backgrounds.
+
+Define **two parallel class families** in every models file:
+
+| Semantic role | Plain-label class | Markdown / container class |
+|---------------|-------------------|---------------------------|
+| ok / happy    | dark fill `#15803d`, white font | `_md`: `fill: "#f0fdf4"`, `stroke: "#15803d"`, `stroke-width: 3` |
+| error         | dark fill `#b91c1c`, white font | `_md`: `fill: "#fff1f2"`, `stroke: "#b91c1c"`, `stroke-width: 3` |
+| suspect/warn  | dark fill `#b45309`, white font | `_md`: `fill: "#fffbeb"`, `stroke: "#b45309"`, `stroke-width: 3` |
+| transform     | dark fill `#1d4ed8`, white font | `_md`: `fill: "#eff6ff"`, `stroke: "#1d4ed8"`, `stroke-width: 3` |
+| infra/neutral | dark fill `#374151`, white font | `_md`: `fill: "#f8fafc"`, `stroke: "#374151"`, `stroke-width: 3` |
+
+- Suffix classes with `_md` for markdown nodes, `_grp` for container groups that contain markdown children.
+- Container groups with markdown children use the same light tinted fill but `stroke-width: 2`.
+- Plain-label nodes (legend swatches, simple string nodes) keep the dark saturated fill — `font-color: "#ffffff"` works correctly on those.
+
 #### Negative Constraints (Guardrails)
 * **DO NOT** mix entity definitions with relationships.
 * **DO NOT** use semicolons in style blocks.
 * **DO NOT** use local file paths for icons.
 * **DO NOT** nest classes inside the `classes` block.
+* **DO NOT** apply dark fills to `|md ... |` markdown nodes — use the `_md` class variant instead.
 
 #### Canonical Example
 
