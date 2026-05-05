@@ -52,10 +52,11 @@ Never guess a transition ID or name. Statuses are workflows, not just strings.
 
 ### 4. Handling Text Formatting (Markdown vs. Wiki)
 
-Jira uses a specific Wiki markup, not standard Markdown. When updating descriptions or comments:
-* **Convert**: Use `pandoc` to convert the user's Markdown input into Jira-compatible syntax.
+Jira uses a specific Wiki markup, not standard Markdown. When updating descriptions or comments create a standard markdown description then convert it to Jira compatible markup syntaxt:
+* **Generate**: Generate a common markdown compatible text
+* **Convert**: Use `pandoc` to convert the markdown input into Jira-compatible syntax.
     ```bash
-    echo "# Header\n- List item" | pandoc -f gfm -t jira
+    echo "# Header\n- List item" | pandoc -f markdown -t jira
     ```
 * **Apply**: Use the output string in your `jira` command.
 
