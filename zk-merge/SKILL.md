@@ -1,39 +1,27 @@
 ---
 name: zk-merge
-description: "Consolidates Serena memories and task findings into a Zettelkasten note keyed to a Jira issue. Use when merging notes, archiving to zk, or capturing results of a Jira-linked work session. Never deletes or overwrites existing content."
+description: "Summarizes current session consolidating memories, tasks, and key findings into a Zettelkasten note."
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
-  tools: zk
+  tools: "zk, gh, zk, serena, worktrunk, allium"
 ---
 
 # zk-merge
 
-Collect context from common locations such as `.opencode/`, `AGENT_CONTEXT.md`, `.serena`, `docs/`, diagrams, and newly added markdown files. And tasks, diagrams, and Serena memories from the current project. The context **must** be relevant to recent changes. Then write them into a single well-organized Zettelkasten note keyed to a todo/issue tracker key e.g. Jira issue key.
+## When to use
+
+Use when the user asks to remove and/or close worktrees, merging notes, completing tasks, archiving to zk, or capturing results of an extended working session.
+
+Collect context from common locations such as `.opencode/`, `AGENT_CONTEXT.md`, `.serena`, `docs/`, diagrams, and newly added markdown files. The context **must be relevant to recent completed work**. Write a summary to a single well-organized Zettelkasten note keyed to a issue tracker key e.g. Jira issue key, github issue id, or a session summary (<= 8 words).
 
 
-## Step 1: Identify an issue Key
+## Step 1: Identify an issue key or summarize
 
-- Check the user's message for a key matching `[A-Z]+-\d+` (e.g. `PROJ-2264`, `ACME-7707`).
-- Check recent commit messages for the same pattern.
-- If none provided, check the current git branch:
+## Step 2: Review memory and docs
 
-```bash
-git rev-parse --abbrev-ref HEAD
-```
-
-Parse the branch name with the same pattern. If a key is found, confirm it with the user before continuing. If none found, ask the user to provide one.
-
-
-## Step 2: Find the Project Root
-
-```bash
-git rev-parse --show-toplevel
-```
-
-All `.opencode/` and `.serena/` reads are relative to this root. Call this `$PROJECT_ROOT`.
-
+Check serena memories, opencode memories, or other memories added during the session for relevant context. Review any new markdown files added to the project during the session, as well as any diagrams created or updated. Review any newly added allium files added.
 
 ## Step 3: Check for an Existing zk Note
 
@@ -45,25 +33,14 @@ find "$ZK_NOTEBOOK_DIR/projects" -name "<JIRA-KEY>_*.md" 2>/dev/null
 - **Not found** → you will **create** a new note.
 
 
-### 4a. Parse content
+## Step 4: Parse content
 
-Summarize each file found — extract what matters for future reference, not a verbatim copy.
+Summarize each file found — extract what matters for future reference, not a verbatim copy. For all diagrams, reference from assets directory with relative path, do not embed as base64 or inline.:
+  - `.d2`
+  - Mermaid
+  - Binary images (`.png`, `.svg`)
 
-For diagrams:
-- `.d2` → embed in fenced block
-- Mermaid (`.mmd`, inline in `.md`) → embed in fenced block
-- Binary images (`.png`, `.svg`) → reference by filename and original relative path only
-
-### 4b. Serena memories (read in priority order)
-
-
-| Path | Type | Priority |
-|------|------|----------|
-| `~/.serena/memories/**/*.md` | General learnings, cross-project patterns | Highest |
-| `$PROJECT_ROOT/.serena/memories/**/*.md` | Project-specific context | Medium |
-
-
-For each memory file, note the filename (it reflects the topic), extract points relevant to this Jira issue, and skip files clearly unrelated to the task.
+Note that the memory filename reflects the topic.
 
 
 ## Step 5: Compose the Note
