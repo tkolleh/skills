@@ -21,7 +21,7 @@
       "expected_output": "Skill triggers on natural language. Gathers all sources. Given the constrained calendar (back-to-back 10am-3pm), identifies only 9am and post-3pm as focus windows. Given 5/10 energy and stated dread, keystone should be the quarterly review doc placed in the morning window before meetings. Calls out if the list is too heavy for a 5/10 day. Makes a deferral call without asking the user to choose.",
       "files": [],
       "assertions": [
-        {"id": "drops-invalid-items", "description": "FRD-412 (authored by user, not reviewer) and MONEY-101 (Backlog status) are absent from the final action item list"},
+        {"id": "drops-invalid-items", "description": "PROJ-412 (authored by user, not reviewer) and PROJ-101 (Backlog status) are absent from the final action item list"},
         {"id": "calls-out-unrealistic-list", "description": "Output explicitly states the list is too heavy for the user's energy level before producing the day shape"},
         {"id": "keystone-in-morning-window", "description": "The quarterly review doc (dreaded/keystone item) is scheduled in the 9am-10am pre-meeting window"},
         {"id": "makes-deferral-not-asks", "description": "Output names a specific deferred item and states the reason — does not ask the user to choose between options"},

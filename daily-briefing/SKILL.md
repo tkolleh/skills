@@ -1,6 +1,6 @@
 ---
 name: daily-briefing
-description: Daily orientation and chief-of-staff briefing for tkolleh. Pulls from Slack (saved items), Gmail (important/starred), Google Calendar (today's events), Jira CLI (FRD + MONEY projects), and Todoist CLI, validates every action item, synthesizes a prioritized briefing using three consequence-based tiers, then produces a decisive hour-by-hour day shape anchored to the user's energy and focus windows. Appends to the daily Zettelkasten note on confirmation. Use this skill whenever the user types /daily-briefing, says "orient me for the day", "morning briefing", "what's on my plate today", "daily standup prep", "chief of staff", or any variant of wanting a cross-source daily work summary.
+description: Daily orientation and chief-of-staff briefing. Pulls from Slack (saved items), Gmail (important/starred), Google Calendar (today's events), Jira CLI (configured projects), and Todoist CLI, validates every action item, synthesizes a prioritized briefing using three consequence-based tiers, then produces a decisive hour-by-hour day shape anchored to the user's energy and focus windows. Appends to the daily Zettelkasten note on confirmation. Use this skill whenever the user types /daily-briefing, says "orient me for the day", "morning briefing", "what's on my plate today", "daily standup prep", "chief of staff", or any variant of wanting a cross-source daily work summary.
 ---
 
 # Daily Briefing
@@ -31,10 +31,10 @@ Load `mcp__claude_ai_Google_Calendar__list_events` via ToolSearch if not loaded.
 - `eventType: outOfOffice` — defines unavailable blocks
 - All confirmed events define the fixed structure of the day and constrain focus windows
 
-**Jira — FRD and MONEY projects**
+**Jira — configured projects**
 Use the `jira` CLI directly (no MCP — CLI is preferred, no OAuth required):
 ```bash
-jira issue list -a tj.kolleh -p FRD,MONEY --plain
+jira issue list -a <jira-username> -p <PROJECT1>,<PROJECT2> --plain
 ```
 Exclude issues with status `Done`, `Closed`, or `Backlog`. What remains are candidates — not yet action items. Validation happens in Phase B.
 
@@ -83,7 +83,7 @@ Group validated items into three consequence-based tiers. Label by what happens 
 ```
 
 Rules:
-- Brackets are plain, not bold: `[FRD-412]` not `**[FRD-412]**`
+- Brackets are plain, not bold: `[PROJ-412]` not `**[PROJ-412]**`
 - Separator after the action is always `→`, never `—`
 - The ref is a Jira key, Slack channel/thread name, or Gmail label — something the user can navigate to
 - Action is ≤5 words
@@ -91,7 +91,7 @@ Rules:
 
 Examples:
 ```
-- [FRD-501] add review comments → FRD-501
+- [PROJ-501] add review comments → PROJ-501
 - [Slack: Marcus] confirm Thursday deploy window → #deploys
 - [Gmail: Alex] reply to API spec question → inbox thread
 - [Todoist] finish quarterly review doc → Todoist
@@ -126,9 +126,9 @@ A compact time-block table. Anchor the keystone in the peak energy focus window.
 ```
 | Time | Block |
 |------|-------|
-| 9:00–10:30 | 🔑 FRD-412 API review |
+| 9:00–10:30 | 🔑 PROJ-412 API review |
 | 10:30–11:00 | standup |
-| 11:00–12:00 | MONEY-88 deploy reply |
+| 11:00–12:00 | PROJ-88 deploy reply |
 | 12:00–1:00 | lunch |
 | 1:00–2:00 | meeting: design review |
 | 2:00–2:30 | email triage |
@@ -153,10 +153,10 @@ If the user confirms:
 
 1. Ensure today's note exists:
 ```bash
-cd /Users/tkolleh/zettelkasten && zk daily
+cd ~/zettelkasten && zk daily
 ```
 
-2. Determine the note path: `/Users/tkolleh/zettelkasten/notes/journals/daily/YYYY_MM_DD.md` (today's date, America/New_York).
+2. Determine the note path: `~/zettelkasten/notes/journals/daily/YYYY_MM_DD.md` (today's date, America/New_York).
 
 3. Read the file. If `## Daily orientation` already exists, replace that section in place. If it does not exist, append it at the end of the file.
 
@@ -193,7 +193,7 @@ Omit `### Nice to have` if empty. Omit `### Blocks others` header if empty but r
 
 5. After writing, reindex:
 ```bash
-cd /Users/tkolleh/zettelkasten/notes && zk index --force
+cd ~/zettelkasten/notes && zk index --force
 ```
 
 ---
