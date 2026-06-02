@@ -1,0 +1,43 @@
+{
+  "skill_name": "daily-briefing",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "It's Monday morning. Run my daily briefing.",
+      "expected_output": "A complete daily orientation: focus windows derived from calendar, validated action items in three consequence tiers (Blocks others / Moves the ball / Nice to have), capped at 5 items. Then prompts for energy/mood/dread. After receiving state, produces keystone + hour-by-hour day shape + explicit deferral. Asks before appending to daily note.",
+      "files": [],
+      "assertions": [
+        {"id": "uses-consequence-tier-labels", "description": "Output contains all three exact tier labels: 'Blocks others', 'Moves the ball', 'Nice to have'"},
+        {"id": "prompts-for-energy-mood-dread", "description": "Output contains a prompt asking for energy (1-10), mood, and dreaded task before producing the day shape"},
+        {"id": "includes-focus-windows", "description": "Output contains a 'Focus windows:' line derived from calendar"},
+        {"id": "includes-day-shape", "description": "Output contains an hour-by-hour schedule with explicit time slots"},
+        {"id": "includes-drop-defer", "description": "Output names a specific item to drop or defer with a stated reason"},
+        {"id": "asks-before-appending", "description": "Output asks the user to confirm before appending to the daily note"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "orient me for the day — I've got back-to-back meetings from 10am to 3pm and I'm running at about a 5 out of 10 today, feeling scattered, dreading the quarterly review doc I need to finish",
+      "expected_output": "Skill triggers on natural language. Gathers all sources. Given the constrained calendar (back-to-back 10am-3pm), identifies only 9am and post-3pm as focus windows. Given 5/10 energy and stated dread, keystone should be the quarterly review doc placed in the morning window before meetings. Calls out if the list is too heavy for a 5/10 day. Makes a deferral call without asking the user to choose.",
+      "files": [],
+      "assertions": [
+        {"id": "drops-invalid-items", "description": "FRD-412 (authored by user, not reviewer) and MONEY-101 (Backlog status) are absent from the final action item list"},
+        {"id": "calls-out-unrealistic-list", "description": "Output explicitly states the list is too heavy for the user's energy level before producing the day shape"},
+        {"id": "keystone-in-morning-window", "description": "The quarterly review doc (dreaded/keystone item) is scheduled in the 9am-10am pre-meeting window"},
+        {"id": "makes-deferral-not-asks", "description": "Output names a specific deferred item and states the reason — does not ask the user to choose between options"},
+        {"id": "respects-calendar-constraints", "description": "No deep work or action items are scheduled during the 10am-3pm back-to-back meeting block"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/daily-briefing — skip the note append",
+      "expected_output": "Full briefing runs through all five phases. When it reaches Phase E and asks about appending to the daily note, the user's pre-stated preference to skip is respected — no append happens, no re-asking. Briefing output still appears in the conversation.",
+      "files": [],
+      "assertions": [
+        {"id": "briefing-completes-fully", "description": "Output contains a complete briefing including prioritized items and an hour-by-hour day shape"},
+        {"id": "no-append-prompt", "description": "Output does NOT contain a question asking whether to append to the daily note (pre-stated skip preference is respected)"},
+        {"id": "no-disk-write", "description": "Output does not reference writing, appending, or saving to a file path on disk"}
+      ]
+    }
+  ]
+}
