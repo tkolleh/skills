@@ -45,6 +45,8 @@ td task list --filter "today | #Inbox | #This Week 🎯 | {today}" --json
 ```
 Read operations need no confirmation. Never complete, delete, or modify tasks without explicit user confirmation.
 
+**Zettelkasten notes** that were created and/or modified within the last 4 days.
+
 **Source failure handling**
 If any source is unavailable (auth error, timeout, no response), do not abort. Proceed with available sources. In the final briefing, render the failed source's section as: `**[Source]:** unavailable — check MCP auth or CLI connection`. Never silently omit a source.
 
@@ -124,15 +126,15 @@ The single item that, if completed today, makes the rest of the week easier. Nam
 **2. The day shape**
 A compact time-block table. Anchor the keystone in the peak energy focus window. Confirmed calendar events are fixed — do not schedule any work items inside meeting blocks. Leave transition buffers (15 min) around back-to-back meetings. Format as a tight two-column table, no prose:
 ```
-| Time | Block |
-|------|-------|
-| 9:00–10:30 | 🔑 PROJ-412 API review |
-| 10:30–11:00 | standup |
-| 11:00–12:00 | PROJ-88 deploy reply |
-| 12:00–1:00 | lunch |
-| 1:00–2:00 | meeting: design review |
-| 2:00–2:30 | email triage |
-| 4:00–4:30 | EOD wrap |
+| Time | Block | Block Adjustments |
+|------|-------|-------------------|
+| 9:00–10:30 | 🔑 PROJ-412 API review | |
+| 10:30–11:00 | standup | |
+| 11:00–12:00 | PROJ-88 deploy reply | |
+| 12:00–1:00 | lunch | |
+| 1:00–2:00 | meeting: design review | |
+| 2:00–2:30 | email triage | |
+| 4:00–4:30 | EOD wrap | |
 ```
 Meeting blocks contain only the meeting name — no work items scheduled inside them.
 
