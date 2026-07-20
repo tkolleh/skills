@@ -15,7 +15,7 @@ Requires `vl2svg` on PATH (install via `npm install -g vega-cli vega-lite`). Fil
 
 1. **Analyze first.** Run:
    ```
-   python main.py analyze --data_path <path>
+   python3 main.py analyze --data_path <path>
    ```
    This inspects the data file and returns a small JSON summary: row count, per-column type (`numeric` / `categorical` / `temporal`), null counts, cardinality, and a `recommended_chart_type` / `recommended_x` / `recommended_y`. Read this summary instead of the raw data file — do not guess column names or types from the file's contents or filename.
 
@@ -23,7 +23,7 @@ Requires `vl2svg` on PATH (install via `npm install -g vega-cli vega-lite`). Fil
 
 2. **Render using the analysis output** (or explicit user-specified overrides for chart type / axes):
    ```
-   python main.py render --data_path <path> --chart_type <bar|scatter|line|pie> --x_axis <field> --y_axis <field>
+   python3 main.py render --data_path <path> --chart_type <bar|scatter|line|pie> --x_axis <field> --y_axis <field>
    ```
    This builds a Vega-Lite spec and renders it to an SVG file via `vl2svg`.
 

@@ -7,7 +7,7 @@ metadata:
   purpose: visualization
   engine: d2
   audience: developers
-  tools: [d2, pastel, bash]
+  tools: [d2, pastel, bash, python3, main.py]
 ---
 
 ## Diagram Creator
@@ -67,8 +67,8 @@ You must generate code in this exact order to ensure compilation:
 1.  **Analyze** the user's request to identify Domains, Containers, and Components.
 2.  **Draft** the Inventory list mentally, and assigning tech stacks.
 3.  **Generate** the D2 code following the instructions strictly.
-4.  **Recommend diagram type** — once the model/view files exist, run `python main.py recommend-diagram-type --model_path <view-file>.d2`. This parses actual entity/relationship counts, cycles, actor shapes, and edge ordering from the file and returns `sequence`, `state`, or `c4` — a deterministic decision, not a free-form read of the user's request. If the recommendation doesn't match what was drafted in step 1, prefer the tool's output and adjust the structure.
-5.  **Check contrast** — run `python main.py check-contrast --model_path models.d2`. This validates every class's `fill`/`font-color` pair against `pastel textcolor` and reports mismatches. Fix any `"ok": false` result before rendering.
+4.  **Recommend diagram type** — once the model/view files exist, run `python3 main.py recommend-diagram-type --model_path <view-file>.d2`. This parses actual entity/relationship counts, cycles, actor shapes, and edge ordering from the file and returns `sequence`, `state`, or `c4` — a deterministic decision, not a free-form read of the user's request. If the recommendation doesn't match what was drafted in step 1, prefer the tool's output and adjust the structure.
+5.  **Check contrast** — run `python3 main.py check-contrast --model_path models.d2`. This validates every class's `fill`/`font-color` pair against `pastel textcolor` and reports mismatches. Fix any `"ok": false` result before rendering.
     - Known limitation: this check assumes plain black/white text and will report `_md`/`_grp` markdown classes as failing even when they intentionally use a tinted `font-color` (see the styling comment at the top of `models.d2`). Treat `_md`/`_grp` class failures as informational, not blocking — the `stroke` vs `fill` distinction on those classes is the real readability signal, not `font-color`.
 6.  **Preview** — render just the class/legend definitions from `models.d2` to a small SVG first (`d2 models.d2 preview.svg`) and confirm it compiles cleanly before rendering the full diagram.
 7.  **Render** the full view file to SVG (`d2 backend-view.d2 output.svg`) and present the result.
