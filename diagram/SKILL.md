@@ -7,7 +7,7 @@ metadata:
   purpose: visualization
   engine: d2
   audience: developers
-  tools: [d2, pastel, bash, main.py]
+  tools: [d2, pastel, bash]
 ---
 
 ## Diagram Creator
