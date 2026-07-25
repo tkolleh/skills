@@ -1,0 +1,117 @@
+{
+  "skill_name": "jq",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "From fixtures/users.json I need the display names of people who are both active and over 21, as a plain sorted list I can paste into a shell script (one name per line, no quotes).",
+      "expected_output": "jq -r select status+age; Avi Casey Morgan only; command shown; no Python primary.",
+      "files": [
+        "fixtures/users.json"
+      ],
+      "assertions": [
+        {
+          "id": "used-jq-cli",
+          "description": "Primary solution invokes jq CLI"
+        },
+        {
+          "id": "raw-flag",
+          "description": "Producing command uses jq -r for unquoted strings"
+        },
+        {
+          "id": "correct-names",
+          "description": "Result is exactly Avi, Casey, Morgan (sorted); excludes Dana and Blake"
+        },
+        {
+          "id": "no-python-json",
+          "description": "Does not use python -c/json or node -e as the primary extractor"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "fixtures/orders.json is a nested orders dump. Build a compact JSON array of objects {buyer, total} for orders where status is paid, with total = sum of line item price*qty, sorted by total descending. Prefer a single tool invocation.",
+      "expected_output": "jq map/reduce; Alice 50, Cara 45, Bob 9 sorted desc; Dana excluded.",
+      "files": [
+        "fixtures/orders.json"
+      ],
+      "assertions": [
+        {
+          "id": "used-jq-cli",
+          "description": "Primary solution is a jq command"
+        },
+        {
+          "id": "paid-only",
+          "description": "Output has no Dana / unpaid order"
+        },
+        {
+          "id": "correct-totals",
+          "description": "Includes Alice total 50, Cara 45, Bob 9"
+        },
+        {
+          "id": "sorted-desc",
+          "description": "Ordered by total descending (50 then 45 then 9)"
+        },
+        {
+          "id": "single-tool-prefer-jq",
+          "description": "Aggregation not primarily in Python/Node loops"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Edit fixtures/package.json so version becomes 2.0.0 and scripts gains a build entry equal to tsc -b. Keep other fields. Show the new version and build script afterward.",
+      "expected_output": "Safe rewrite; version 2.0.0; build tsc -b; name demo-app; no same-path redirect.",
+      "files": [
+        "fixtures/package.json"
+      ],
+      "assertions": [
+        {
+          "id": "used-jq-cli",
+          "description": "Update done with jq"
+        },
+        {
+          "id": "no-same-path-redirect",
+          "description": "Does not use jq ... package.json > package.json same-path truncate"
+        },
+        {
+          "id": "temp-or-safe-write",
+          "description": "Uses temp+mv or other safe write"
+        },
+        {
+          "id": "version-and-build",
+          "description": "version 2.0.0 and scripts.build tsc -b"
+        },
+        {
+          "id": "preserved-name",
+          "description": "name remains demo-app"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Find the user object in fixtures/users.json whose name equals the value in the environment variable TARGET_NAME (exported in the shell). Print that single user as compact JSON. Prefer not hardcoding the name string inside the filter.",
+      "expected_output": "jq --arg TARGET_NAME; Dana object; no shell interpolation into filter.",
+      "files": [
+        "fixtures/users.json"
+      ],
+      "assertions": [
+        {
+          "id": "used-jq-cli",
+          "description": "Uses jq"
+        },
+        {
+          "id": "uses-arg",
+          "description": "Uses --arg or --argjson for the name"
+        },
+        {
+          "id": "correct-user",
+          "description": "Output is Dana user when TARGET_NAME=Dana"
+        },
+        {
+          "id": "no-filter-interpolation",
+          "description": "Filter does not bake expanded name via double-quote shell interpolation"
+        }
+      ]
+    }
+  ]
+}

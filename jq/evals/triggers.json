@@ -1,0 +1,26 @@
+{
+  "skill_name": "jq",
+  "skill_description_source": "jq/SKILL.md frontmatter description",
+  "queries": [
+    {"id": "t01", "query": "Write a jq filter to select active users over 21 from users.json", "should_trigger": true},
+    {"id": "t02", "query": "Transform this API JSON response — extract all PR titles as a raw list", "should_trigger": true},
+    {"id": "t03", "query": "Parse this NDJSON log and count error lines for the auth service", "should_trigger": true},
+    {"id": "t04", "query": "Update package.json version with jq and add a build script", "should_trigger": true},
+    {"id": "t05", "query": "group_by category in this JSON file and count each bucket", "should_trigger": true},
+    {"id": "t06", "query": "pretty-print this minified JSON file in the terminal", "should_trigger": true},
+    {"id": "t07", "query": "Filter JSON config to only env=prod using the jq CLI", "should_trigger": true},
+    {"id": "t08", "query": "Extract nested buyer names and order totals from orders.json", "should_trigger": true},
+    {"id": "t09", "query": "Use --arg with jq so the username comes from an env var", "should_trigger": true},
+    {"id": "t10", "query": "Convert this huge JSON array into compact one-object-per-line output", "should_trigger": true},
+    {"id": "n01", "query": "Convert this CSV of sales into a markdown table", "should_trigger": false},
+    {"id": "n02", "query": "Write a Python ETL pipeline from Postgres to Snowflake", "should_trigger": false},
+    {"id": "n03", "query": "Fix the TypeScript type error in src/user.ts", "should_trigger": false},
+    {"id": "n04", "query": "Create a React component for a settings form", "should_trigger": false},
+    {"id": "n05", "query": "Explain how git rebase -i works", "should_trigger": false},
+    {"id": "n06", "query": "Open package.json in my editor and bump the version by hand", "should_trigger": false},
+    {"id": "n07", "query": "Design a REST API for inventory management", "should_trigger": false},
+    {"id": "n08", "query": "Translate this YAML docker-compose to English for the wiki", "should_trigger": false},
+    {"id": "n09", "query": "Run the unit tests and fix whatever fails", "should_trigger": false},
+    {"id": "n10", "query": "How do I install Node 22 with nvm?", "should_trigger": false}
+  ]
+}
