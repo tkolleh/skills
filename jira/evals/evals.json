@@ -1,0 +1,86 @@
+{
+  "skill_name": "jira",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Show my open Jira issues",
+      "expected_output": "Agent authenticates context via jira me, lists issues assigned to current user excluding Done, uses --plain (or --raw), does not invent keys, does not open TUI.",
+      "files": [],
+      "assertions": [
+        {"id": "uses-jira-me-or-currentUser", "description": "Command plan uses $(jira me) and/or JQL currentUser() for assignee, not a hardcoded personal username"},
+        {"id": "non-interactive-output", "description": "List/view commands include --plain and/or --raw"},
+        {"id": "excludes-done-or-unresolved", "description": "Filter excludes Done/resolved work (-s~Done or resolution/status JQL)"},
+        {"id": "no-invented-keys", "description": "No fabricated issue keys are presented as real results without a CLI read"},
+        {"id": "no-output-json-flag", "description": "Does not use nonexistent --output json flag"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Move ACME-42 to In Progress",
+      "expected_output": "Agent treats ACME-42 as given key, confirms before transition, does not call move --list, runs jira issue move ACME-42 \"In Progress\" (after optional status read).",
+      "files": [],
+      "assertions": [
+        {"id": "confirms-before-write", "description": "Asks user for confirmation before executing move/create/comment/assign"},
+        {"id": "no-move-list-flag", "description": "Never uses jira issue move --list or claims that flag exists"},
+        {"id": "move-with-state-name", "description": "Uses jira issue move ACME-42 with quoted/exact state In Progress"},
+        {"id": "no-hardcoded-company-project", "description": "Does not substitute a different org-specific project key for ACME-42"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Comment on PROJ-99: shipped in abc123 — use a short markdown bullet list of verification steps",
+      "expected_output": "Confirms, converts markdown via pandoc -f gfm -t jira when pandoc available, posts via jira issue comment add PROJ-99 … --no-input or --template.",
+      "files": [],
+      "assertions": [
+        {"id": "confirms-before-comment", "description": "Confirms with user before posting comment"},
+        {"id": "pandoc-gfm-jira-when-structured", "description": "Uses pandoc -f gfm -t jira (or documents plain-text fallback if pandoc missing) for structured markdown"},
+        {"id": "comment-add-cli", "description": "Uses jira issue comment add PROJ-99"},
+        {"id": "noninteractive-comment", "description": "Passes --no-input and/or --template to avoid TUI prompt"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "List high-priority bugs in project OPS updated this week that are not done",
+      "expected_output": "Cross-project capable command using -pOPS (or JQL project=OPS), type Bug, priority High, updated week, status not Done, plain columns.",
+      "files": [],
+      "assertions": [
+        {"id": "targets-ops-project", "description": "Uses -pOPS and/or JQL project = OPS"},
+        {"id": "filters-bug-high-week", "description": "Applies bug type, high priority, and updated/created week-style filter"},
+        {"id": "portable-no-default-project-assumption", "description": "Does not assume skill author's default project; OPS is explicit"},
+        {"id": "plain-or-raw", "description": "Uses --plain or --raw"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a GitHub issue for the login bug",
+      "expected_output": "Skill must NOT be the right tool; agent should not run jira CLI for a pure GitHub Issues request.",
+      "files": [],
+      "assertions": [
+        {"id": "no-jira-cli-for-github-issues", "description": "Does not invoke jira CLI for a GitHub Issues-only request"},
+        {"id": "non-trigger-recognized", "description": "Treats this as outside jira skill scope (GitHub/gh, not Jira)"}
+      ]
+    }
+  ],
+  "trigger_suite": {
+    "should_trigger": [
+      "show my open jira tickets",
+      "transition PROJ-12 to Done",
+      "jql for bugs assigned to me",
+      "comment on FRD-1 with release notes",
+      "what's in the current sprint in Jira",
+      "create a story in project BILL",
+      "assign me TICKET-9",
+      "jira issue view for the key on my branch"
+    ],
+    "should_not_trigger": [
+      "add a todoist task to buy milk",
+      "open a GitHub issue for the crash",
+      "list my Linear tickets",
+      "what time is standup on the calendar",
+      "write a commit message for this diff",
+      "search the codebase for RetryPolicy",
+      "slack my manager that I'm OOO",
+      "plan a generic roadmap with no tracker named"
+    ]
+  }
+}
