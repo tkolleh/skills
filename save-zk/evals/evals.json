@@ -1,0 +1,89 @@
+{
+  "skill_name": "save-zk",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "/save-zk — Note Key confirmed: ACME-100. Session explored multi-service auth architecture.",
+      "expected_output": "Creates Session Note for ACME-100 with Living Head (BLUF, executive summary, findings table), issue tag, optional d2/mermaid fence, top-level Deep Context details, no Update section, Daily back-link; no Task Matrix; no assets/base64.",
+      "files": ["fixtures/eval-0-create-architecture/"],
+      "assertions": [
+        {"id": "create-shape", "description": "New Session Note with Living Head; no ## Update section"},
+        {"id": "has-bluf", "description": "Contains BLUF blockquote with current truth"},
+        {"id": "findings-table", "description": "Key Findings is a markdown table (Category | Finding | Impact/Next)"},
+        {"id": "issue-tag", "description": "Frontmatter tags include acme-100 (or ACME-100 normalized)"},
+        {"id": "visual-fence-or-omit", "description": "If structure present: fenced d2 or mermaid; never base64 or asset files"},
+        {"id": "top-level-details", "description": "Create includes top-level Deep Context <details>"},
+        {"id": "no-task-matrix", "description": "No Task Matrix section"},
+        {"id": "daily-backlink", "description": "Attempts Daily Note back-link after Session Note write"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "save-zk — same key ACME-100; new session delta only.",
+      "expected_output": "Living Head replaced; prior body/Update preserved; new Update delta only; create details untouched; Daily back-link; most-recent if multi-match.",
+      "files": ["fixtures/eval-1-update-living-head/"],
+      "assertions": [
+        {"id": "living-head-replaced", "description": "BLUF/findings reflect new session truth"},
+        {"id": "prior-preserved", "description": "Frozen create Deep Context and prior Update bodies unchanged"},
+        {"id": "new-update-delta", "description": "Exactly one new ## Update: dated section with delta only (not full findings table)"},
+        {"id": "daily-backlink", "description": "Daily back-link attempted"},
+        {"id": "most-recent-on-multi", "description": "If multiple tagged notes, updates most recently modified"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/save-zk — Note Key ACME-200; session has latency metrics.",
+      "expected_output": "Metric table in Visual; BLUF mentions outcome; no required visualize CLI.",
+      "files": ["fixtures/eval-2-metrics-embed/"],
+      "assertions": [
+        {"id": "metric-table-visual", "description": "Visual section includes a metrics markdown table"},
+        {"id": "bluf-outcome", "description": "BLUF mentions measured outcome or status"},
+        {"id": "no-visualize-required", "description": "Does not require vl2svg/visualize CLI to complete"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "save-zk — user slug: edge cache spike notes",
+      "expected_output": "Slug identity; no invented issue key/tag; full Living Head; create shape.",
+      "files": ["fixtures/eval-3-slug-key/"],
+      "assertions": [
+        {"id": "slug-identity", "description": "Note Key/title uses user slug, not a fabricated tracker id"},
+        {"id": "no-invented-issue-tag", "description": "Does not add a fake Jira/GitHub issue tag"},
+        {"id": "create-living-head", "description": "Full Living Head create shape with BLUF and findings table"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Non-invoke suite (see trigger_suite.should_not_trigger)",
+      "expected_output": "Skill must not run; no Session Note or Daily writes.",
+      "files": ["fixtures/eval-4-explicit-invoke-negatives/"],
+      "assertions": [
+        {"id": "no-run-on-bare-save", "description": "bare 'save' does not trigger save-zk"},
+        {"id": "no-run-on-zk-merge", "description": "zk-merge /save this session phrases do not trigger"},
+        {"id": "no-writes-on-negative", "description": "No notebook writes for should_not_trigger prompts"}
+      ]
+    }
+  ],
+  "trigger_suite": {
+    "should_trigger": [
+      "save-zk",
+      "/save-zk",
+      "run save-zk for this session",
+      "please /save-zk now"
+    ],
+    "should_not_trigger": [
+      "save",
+      "save this file",
+      "save this session to zk",
+      "zk-merge",
+      "/zk-merge",
+      "summarize this session",
+      "remove the worktree",
+      "daily-briefing",
+      "write a commit message",
+      "search my notes with qmd",
+      "orient me for the day",
+      "archive and close"
+    ]
+  }
+}
