@@ -1,0 +1,89 @@
+{
+  "skill_name": "color-accessibility",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Make my Neovim Search highlight use neon green background #50fa7b and pick a readable foreground. Give me the lua nvim_set_hl snippet and the measured WCAG contrast ratio.",
+      "expected_output": "Uses main.py textcolor and/or contrast (not pastel contrast). Foreground is black #000000. Reports a measured ratio near ~15:1 AAA. Delivers lua with fg/bg hex and cited ratio.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "no-fake-pastel-contrast",
+          "description": "Does not invoke `pastel contrast` as a shell command (that subcommand does not exist)"
+        },
+        {
+          "id": "runs-main-py-measure",
+          "description": "Runs color-accessibility main.py contrast and/or textcolor (or equivalent pastel textcolor + main.py contrast) before claiming readability"
+        },
+        {
+          "id": "fg-is-black",
+          "description": "Chosen foreground for #50fa7b is #000000 (or equivalent black)"
+        },
+        {
+          "id": "reports-numeric-ratio",
+          "description": "Output cites a numeric contrast ratio (e.g. 15.3:1) consistent with measurement, not a guessed round number alone"
+        },
+        {
+          "id": "delivers-lua-snippet",
+          "description": "Output includes a usable nvim_set_hl (or equivalent) snippet with both fg and bg"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Is #777777 text on #ffffff AA for normal body copy? If not, fix the foreground and show before/after ratios.",
+      "expected_output": "Measures pair; reports fail (ratio slightly under 4.5). Fixes via main.py fix or textcolor to a passing fg (typically #000000). Shows before and after ratios; after passes_aa true.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "detects-fail",
+          "description": "Correctly identifies that #777777 on #ffffff fails AA for normal text (ratio < 4.5)"
+        },
+        {
+          "id": "fix-passes-aa",
+          "description": "Proposed replacement pair has passes_aa true / ratio >= 4.5:1 with evidence from measurement"
+        },
+        {
+          "id": "fix-prefers-robust-fg",
+          "description": "Fixed foreground is a robust choice (pastel textcolor black/white or ratio >= 7:1), not a minimal gray scrape just above 4.5:1"
+        },
+        {
+          "id": "before-after-ratios",
+          "description": "Output includes both the failing original ratio and the fixed ratio"
+        },
+        {
+          "id": "no-fake-pastel-contrast",
+          "description": "Does not invoke `pastel contrast`"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "On Dracula bg #282a36 with active fg #f8f8f2, generate a dimmed inactive text color (~60% mix) that stays at least 3:1 against the background, and confirm active text contrast too.",
+      "expected_output": "Runs mix-dim (or pastel mix with --fraction) then contrast on mixed and active pairs. Dim ratio >= 3 and dim ratio < active ratio. Returns hex for dim color plus both ratios.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "uses-mix-dim-or-pastel-mix",
+          "description": "Uses main.py mix-dim or pastel mix with an explicit fraction/colorspace — not a hand-picked gray"
+        },
+        {
+          "id": "dim-meets-3-to-1",
+          "description": "Reported dim-vs-bg contrast is >= 3:1"
+        },
+        {
+          "id": "dim-below-active",
+          "description": "Dim contrast ratio is strictly lower than active fg contrast on the same bg"
+        },
+        {
+          "id": "reports-both-ratios",
+          "description": "Output reports numeric ratios for both active and dim pairs"
+        },
+        {
+          "id": "no-fake-pastel-contrast",
+          "description": "Does not invoke `pastel contrast`"
+        }
+      ]
+    }
+  ]
+}
