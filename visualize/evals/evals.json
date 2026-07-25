@@ -1,0 +1,109 @@
+{
+  "skill_name": "visualize",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Make a chart from visualize/evals/fixtures/sales_by_region.csv — revenue by region.",
+      "expected_output": "Runs analyze then render. Produces an SVG bar (or pie if data fits) with region on categorical axis and revenue on measure. Reports SVG path and chart type. Does not invent columns.",
+      "files": ["evals/fixtures/sales_by_region.csv"],
+      "assertions": [
+        {
+          "id": "ran-analyze",
+          "description": "Agent invoked main.py analyze with the sales_by_region.csv path before or as part of producing the chart"
+        },
+        {
+          "id": "ran-render",
+          "description": "Agent invoked main.py render with chart_type bar or pie and axes using region and revenue (exact column names from analyze)"
+        },
+        {
+          "id": "svg-artifact",
+          "description": "An SVG file exists at a path the agent reported, is non-empty, and begins with SVG markup"
+        },
+        {
+          "id": "vega-lite-pipeline",
+          "description": "Chart was produced via skill main.py + vl2svg (render.json status success and/or Vega-Lite schema in render output) — not a hand-rolled SVG or matplotlib-only path"
+        },
+        {
+          "id": "reports-path-and-type",
+          "description": "Final response names the chart type and the SVG output path"
+        },
+        {
+          "id": "no-invented-columns",
+          "description": "Render used only columns present in the CSV (region, revenue) — no hallucinated field names"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Plot a line chart of value over time from visualize/evals/fixtures/timeseries.json",
+      "expected_output": "Analyzes JSON, respects user request for line chart with date/value (or analyze-equivalent temporal+numeric). Renders SVG line chart and reports path.",
+      "files": ["evals/fixtures/timeseries.json"],
+      "assertions": [
+        {
+          "id": "ran-analyze",
+          "description": "Agent ran main.py analyze on timeseries.json"
+        },
+        {
+          "id": "line-chart-render",
+          "description": "Render used chart_type line with temporal x (date) and numeric y (value)"
+        },
+        {
+          "id": "svg-artifact",
+          "description": "Non-empty SVG artifact exists at the reported path"
+        },
+        {
+          "id": "vega-lite-pipeline",
+          "description": "Chart produced via skill main.py + vl2svg / Vega-Lite render path (not hand-rolled SVG only)"
+        },
+        {
+          "id": "reports-line",
+          "description": "Final response states it is a line chart and includes the SVG path"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's some data — visualize it:\n\nproduct,units\nA,10\nB,25\nC,15\n",
+      "expected_output": "Writes pasted CSV to a temp/scratch path (not repo root unless asked), analyzes, renders bar/pie of units by product, returns SVG path. Does not leave fixture only in conversation without a file path for main.py.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "materialized-temp-file",
+          "description": "Inline CSV was written to a real filesystem path used as --data_path (scratch/temp preferred)"
+        },
+        {
+          "id": "analyze-then-render",
+          "description": "Both analyze and render were run successfully against that path"
+        },
+        {
+          "id": "svg-artifact",
+          "description": "Non-empty SVG exists at reported path"
+        },
+        {
+          "id": "vega-lite-pipeline",
+          "description": "Chart produced via skill main.py + vl2svg / Vega-Lite render path (not hand-rolled SVG only)"
+        },
+        {
+          "id": "uses-product-units",
+          "description": "Chart encodes product (categorical) and units (numeric) — not invented columns"
+        }
+      ]
+    }
+  ],
+  "trigger_evals": {
+    "should_trigger": [
+      "Make a bar chart of revenue by region from this CSV",
+      "visualize this table as a plot",
+      "scatter plot height vs weight from data.json",
+      "turn sales.csv into a pie chart",
+      "graph the time series in metrics.json"
+    ],
+    "should_not_trigger": [
+      "Draw the checkout service architecture with boxes and arrows",
+      "Generate a sequence diagram for login flow",
+      "Make a poster for the launch party",
+      "Refactor the payment module",
+      "Write unit tests for the auth service"
+    ]
+  }
+}

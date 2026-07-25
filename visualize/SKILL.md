@@ -1,34 +1,125 @@
 ---
 name: visualize
-description: Generate charts (bar, line, scatter, pie) from CSV or JSON data using Vega-Lite, with automatic column-type detection and chart-type recommendation.
+description: >-
+  Trigger on: chart, plot, visualize data, bar chart, line chart, scatter plot,
+  pie chart, line graph, Vega-Lite, make a chart from CSV/JSON/table. Generates
+  charts (bar, line, scatter, pie) from CSV, JSON, or pasted tabular data using
+  Vega-Lite, with automatic column-type detection and chart-type recommendation.
+  Use when the user wants a data visualization from a table or file — not for
+  architecture/sequence diagrams (use diagram), network graphs, or design/art
+  images.
+license: MIT
+compatibility: "python3, vl2svg (vega-cli + vega-lite); duckdb for files ≥10MB"
+metadata:
+  audience: developers
+  purpose: visualization
+  engine: vega-lite
+  tools: "python3, vl2svg, duckdb, bash, main.py"
 ---
 
 # Data Visualization Creator
 
-Generate plots, charts, and graphs from data using `vega-cli`/`vega-lite`, with automatic visualization type selection based on the data's actual column types.
+Generate plots/charts/graphs from CSV or JSON via `vl2svg` (Vega-Lite), with
+column-type detection and chart-type recommendation.
 
-Requires `vl2svg` on PATH (install via `npm install -g vega-cli vega-lite`). Files 10MB or larger additionally require the `duckdb` CLI on PATH (install via `brew install duckdb` or see https://duckdb.org/docs/installation).
+## When to use
 
-## Instructions for the LLM Agent
+- User wants a **chart/plot/graph** from tabular data (file or pasted table).
+- Do **not** use for architecture/sequence diagrams → `diagram`.
+- Do **not** use for generative art, posters, or non-data images.
 
-0. **If the data isn't already a file** (the user pasted a table, or handed you inline JSON/CSV), write it to a file in the session scratch directory first — do not invent a path, and do not write it into the project's working directory. Then pass that path as `--data_path`.
+## Prerequisites
 
-1. **Analyze first.** Run:
+- `python3` and this skill's `main.py` (path: skill directory next to this file).
+- `vl2svg` on PATH: `npm install -g vega-cli vega-lite`.
+- Files ≥10MB also need `duckdb` on PATH.
+
+## Procedure
+
+Work phases in order. Do not skip. Do not invent column names — only use
+fields from `analyze` output (or exact user overrides that exist in that output).
+
+### Phase 1 — Materialize data
+
+1. If data is already a file path the user gave, use it as `--data_path`.
+2. If the user pasted a table / inline JSON/CSV, write it to a file in the
+   **session scratch directory** (temp). Do not write into the project working
+   directory unless the user explicitly asks to save there.
+3. Completion: a real filesystem path exists and is readable.
+
+### Phase 2 — Analyze
+
+1. Run (from skill dir or with absolute path to `main.py`):
+
+   ```bash
+   python3 <skill-dir>/main.py analyze --data_path <path>
    ```
-   python3 main.py analyze --data_path <path>
+
+2. Read the JSON stdout. On `"status": "error"`, report `reason` and STOP
+   (or fix path/format and re-run once).
+3. Note `recommended_chart_type`, `recommended_x`, `recommended_y`, column
+   `type` / `cardinality` / `null_count`. For large files note `"engine":
+   "duckdb"` and `size_mb`.
+4. Completion: you have recommended chart + axes (or a clear error reported).
+
+### Phase 3 — Choose encoding
+
+1. Default to recommended chart/x/y from analyze.
+2. If the user named a chart type or axes, prefer their choice **only if**
+   those fields appear in `columns`. If not, re-check analyze and ask once.
+3. Chart intents: bar = category vs measure; line = temporal vs measure;
+   scatter = two numerics; pie = few categories (≤6) + measure.
+4. Completion: concrete `chart_type`, `x_axis`, `y_axis` (y may be null only
+   if analyze allowed it and user wants category counts — otherwise require y).
+
+### Phase 4 — Render
+
+1. Pick `--output_path` in scratch (or user-requested path). Prefer `.svg`.
+
+   ```bash
+   python3 <skill-dir>/main.py render \
+     --data_path <path> \
+     --chart_type <bar|scatter|line|pie> \
+     --x_axis <field> \
+     --y_axis <field> \
+     --output_path <out.svg>
    ```
-   This inspects the data file and returns a small JSON summary: row count, per-column type (`numeric` / `categorical` / `temporal`), null counts, cardinality, and a `recommended_chart_type` / `recommended_x` / `recommended_y`. Read this summary instead of the raw data file — do not guess column names or types from the file's contents or filename.
 
-   For files ≥10MB, this step uses DuckDB to query the file directly instead of loading it into memory — the output includes `"engine": "duckdb"` and `"size_mb"` so you know this path was taken. The column stats (cardinality, null counts) are DuckDB's own summary statistics rather than exact Python counts, but are accurate enough for chart-type recommendation.
+2. On success JSON: keep `output_path`. On error JSON: report `reason` /
+   `stage`; if invalid field, re-run Phase 2 — do not blind-retry.
+3. If `"aggregated": true`, you **must** tell the user what was aggregated
+   or sampled (`aggregation` field). Never imply every row was plotted.
+4. Completion: SVG exists at `output_path`, or structured error reported.
 
-2. **Render using the analysis output** (or explicit user-specified overrides for chart type / axes):
-   ```
-   python3 main.py render --data_path <path> --chart_type <bar|scatter|line|pie> --x_axis <field> --y_axis <field>
-   ```
-   This builds a Vega-Lite spec and renders it to an SVG file via `vl2svg`.
+### Phase 5 — Respond
 
-   For files ≥10MB, the data is aggregated via DuckDB before rendering rather than plotted row-by-row: `bar`/`line`/`pie` charts show `sum(y_axis)` grouped by `x_axis`; `scatter` charts show a random 5,000-row sample. The output JSON includes `"aggregated": true` and an `"aggregation"` field describing exactly what was computed — **always mention this to the user** when reporting the result (e.g. "this chart shows totals per category, not every individual row" or "this scatter plot shows a 5,000-row sample of the N-row dataset"). Do not present an aggregated/sampled chart as if it plotted every row.
+1. Report chart type, axes, and SVG path.
+2. Mention aggregation/sampling when present.
+3. PNG only if user asked: rasterize SVG separately (`rsvg-convert` or
+   `vl2png`); this skill does not emit PNG by default.
+4. Completion: user has path + one-line interpretation of the chart.
 
-3. **Respond.** On success, report the SVG `output_path` to the user. On failure, the script returns structured JSON (`{"status": "error", "reason": ..., "stage": ...}`) — report the reason directly rather than retrying blindly; if the `reason` names an invalid field, re-check the `analyze` output for the correct column name.
+## Edge cases (summary)
 
-4. **PNG output** is not produced by default. If the user explicitly asks for a raster image, rasterize the resulting SVG separately (e.g. with `rsvg-convert` or `vl2png` using the same spec) rather than assuming PNG is needed.
+- Empty file / no rows → analyze error; stop and say so.
+- Missing `vl2svg` / `duckdb` → report install hint from error JSON; stop.
+- Unknown columns → list columns from analyze; do not guess.
+- Wide tables: recommend using analyze picks; do not plot all columns at once.
+- Details and decision table: load `references/chart-selection.md` only if
+  recommendation is ambiguous or user asks why a type was chosen.
+
+## Examples
+
+### Happy path
+
+- User: "Make a bar chart of revenue by region from `sales.csv`"
+- You: analyze → render bar with region/revenue → return SVG path.
+
+### Inline data
+
+- User pastes a markdown table → write temp CSV → analyze → render → SVG.
+
+### Non-trigger
+
+- User: "Draw the checkout service architecture" → do **not** use this skill
+  (use `diagram`).
