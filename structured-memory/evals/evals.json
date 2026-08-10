@@ -4,12 +4,12 @@
     {
       "id": 1,
       "prompt": "Remember that our internal deploy tool silently skips any database migration whose changelog folder name contains \"stage\" or \"prod\" — bit us today on an unrelated service. Save that somewhere useful.",
-      "expected_output": "Classifies this as a durable, cross-project tool-behavior fact. Proposes writing it to openmemory as a single atomic sentence (decomposed into multiple store calls if it doesn't fit in one clause), with an explicit plan to verify via openmemory_get immediately after each store call. Does not propose writing one long multi-clause openmemory entry.",
+      "expected_output": "Classifies this as a durable, cross-project tool-behavior fact. Proposes writing it to durable cross-project memory as a single atomic sentence (decomposed into multiple writes if it doesn't fit in one clause), with an explicit plan to verify by reading it back immediately after each write. Does not propose writing one long multi-clause entry.",
       "files": [],
       "assertions": [
-        "Proposes writing the fact to openmemory, not only to local project-scoped memory, on the reasoning that it applies beyond the one project that surfaced it",
-        "Every proposed openmemory store call contains exactly one atomic clause or sentence — no compound multi-clause content bundled into a single store call",
-        "Explicitly states a plan to verify each write with openmemory_get (or equivalent immediate-verification step) rather than trusting the store call's own success response",
+        "Proposes writing the fact to a durable, cross-project memory store, not only to project-scoped notes, on the reasoning that it applies beyond the one project that surfaced it",
+        "If the target backend is described as accepting only single-clause writes, every proposed write contains exactly one atomic clause or sentence — no compound multi-clause content bundled into a single write",
+        "States a plan to immediately verify each write by reading it back, rather than trusting the write call's own success response",
         "Does not claim to have actually executed a real memory write in this test scenario"
       ]
     },
@@ -22,19 +22,31 @@
         "Does not present the Postgres advisory-lock claim as a settled, confirmed fact without qualification",
         "Either proposes checking the claim against authoritative documentation before persisting it, or explicitly marks the proposed memory content as unverified/tentative",
         "Does not propose persisting the user's original unverified phrasing in any form, hedged or not — the correct outcome is to verify and save a corrected fact, not to save an uncertain one",
-        "Every proposed openmemory store call contains exactly one atomic clause or sentence, each paired with an explicit plan to verify it with openmemory_get immediately after writing"
+        "Every proposed write contains exactly one atomic clause or sentence, each paired with an explicit plan to verify it by reading it back immediately after writing"
       ]
     },
     {
       "id": 3,
       "prompt": "Can you go through my memory system and see if there's anything worth cleaning up — duplicates, stale stuff, dangling links, whatever?",
-      "expected_output": "Surveys actual current state of local memory, openmemory, and/or serena using read-only tools. Proposes concrete cleanup actions (promote/prune/reinforce/resolve dangling links) rather than executing them without approval.",
+      "expected_output": "Surveys actual current state of project-scoped notes, durable memory, and/or task-tracking state using read-only tools. Proposes concrete cleanup actions (promote/prune/reinforce/resolve dangling links) rather than executing them without approval.",
       "files": [],
       "assertions": [
-        "Actually queries or reads real current state from at least one of: local memory files, openmemory, serena — not just generic advice with no lookup",
+        "Actually queries or reads real current state from at least one of: project-scoped notes, durable memory, task-tracking state — whichever backends are actually configured in this environment — not just generic advice with no lookup",
         "Produces a concrete list of specific proposed actions naming particular memories/entries, not generic advice like 'you should review your memories periodically'",
         "Does not claim to have executed any deletion, edit, promotion, or reinforcement — presents changes as a proposal awaiting approval",
         "Checks for factual contradictions between memories in different stores or different projects (not just duplicates and dangling links within one store), and flags at least one specific contradiction if any exists in the real data"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Save this to long-term memory: the user prefers tabs over spaces in Python files, wants commit messages under 50 characters, and always squashes before merging.",
+      "expected_output": "Recognizes the input bundles three distinct facts into one request and decomposes it into separate atomic write proposals rather than one compound write, applying the atomic-write defense proactively rather than only after being told a specific backend is buggy.",
+      "files": [],
+      "assertions": [
+        "Decomposes the compound input into 2 or more separate single-fact write proposals rather than one multi-clause write",
+        "States an intent to verify each write by reading it back immediately, independent of whether this particular backend is claimed to be reliable",
+        "Does not claim any write succeeded without describing a verification step",
+        "Does not treat a bare success response from a write call as sufficient proof the content landed correctly"
       ]
     }
   ]
