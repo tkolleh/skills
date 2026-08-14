@@ -1,0 +1,207 @@
+{
+  "skill_name": "rigorous-review",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Rigorous review of PR #101. It bumps `parse-lib` from 2.1.0 to 2.4.0 and the description says it resolves advisory GHSA-xxxx. The lockfile shows `parse-lib` still resolving to 3.0.1 both before and after the change, because a transitive pin dominates, and the advisory's actual fix shipped in `serialize-lib`, which the repo already pins via an overrides block.",
+      "expected_output": "Agent refreshes the base ref, runs discovered preflight gates, reads the lockfile at both revisions, and reports that the stated security rationale is false: the resolved version is unchanged and the advisory's fix is in a different package already pinned. Quotes the lockfile resolution and the overrides entry as evidence. Ends with a non-findings block.",
+      "files": [],
+      "assertions": [
+        {"id": "checks-resolved-not-declared", "description": "Compares the resolved version in the lockfile before and after, not just the declared range in the manifest"},
+        {"id": "identifies-false-premise", "description": "States that the change does not achieve its stated security purpose, and why"},
+        {"id": "quotes-evidence", "description": "Quotes the lockfile resolution and/or the overrides entry rather than asserting from memory"},
+        {"id": "non-findings-block", "description": "Review ends with an explicit checked-no-concern block naming the pillars covered"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Rigorous review of PR #102. It adds an admin panel gated behind the `auditor` role. The schema authorization directives grant `auditor` exactly one field, and the panel calls two queries, neither of which `auditor` can reach.",
+      "expected_output": "Agent traces the role from the gate to the schema authorization directives, confirms the two required queries are not reachable by that role, and reports the feature as permanently broken for its namesake role with a concrete failure scenario. Severity High or Critical.",
+      "files": [],
+      "assertions": [
+        {"id": "traces-role-to-schema", "description": "Follows the role from the UI gate through to the schema/authorization definitions rather than trusting the gate name"},
+        {"id": "names-unreachable-queries", "description": "Names the specific queries the role cannot call"},
+        {"id": "failure-scenario-concrete", "description": "States what a user in that role actually sees, not that it 'may fail'"},
+        {"id": "severity-high-or-above", "description": "Rates the finding High or Critical, since the feature never works for its intended role"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Rigorous review of PR #103. It adds a table search box. The predicate is `String(row[col.accessor]).includes(query)`. Four of the six columns named in the ticket's acceptance criteria render a derived label rather than the raw accessor value, so searching the visible text returns nothing and shows an empty result with no error.",
+      "expected_output": "Agent reads the acceptance criteria from the linked ticket, checks each of the six columns against the predicate, and reports that four are unsearchable and fail silently. Quotes the predicate. Ideally drives the predicate against fixture rows and reports an input to output table, marking the finding Confirmed.",
+      "files": [],
+      "assertions": [
+        {"id": "checks-acceptance-criteria", "description": "Checks the change against the acceptance criteria from the linked ticket, per Phase 3"},
+        {"id": "identifies-silent-failure", "description": "Calls out that the failure is silent — empty results, not an error — and weights severity accordingly"},
+        {"id": "quotes-predicate", "description": "Quotes the matching predicate as evidence"},
+        {"id": "empirical-or-plausible", "description": "Either reports an input/output table from running the predicate and marks it Confirmed, or marks the finding Plausible — never claims a table it did not produce"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Rigorous review of PR #104. A filter chip uses `isActive = selected.includes(id)` to render its active state, but its click handler calls `setSelected([...selected, id])` unconditionally. Clicking an already-active chip widens the filter instead of clearing it.",
+      "expected_output": "Agent notices that the read predicate and the write predicate disagree, reports the divergence with both lines quoted, and describes the observable outcome: clicking an active chip broadens rather than clears the selection. Suggests the minimal fix — toggle rather than append.",
+      "files": [],
+      "assertions": [
+        {"id": "compares-read-and-write-predicates", "description": "Explicitly compares the is-active predicate against the toggle behaviour rather than reading each in isolation"},
+        {"id": "quotes-both-lines", "description": "Quotes both the predicate and the handler as evidence"},
+        {"id": "minimal-fix", "description": "Suggests a minimal toggle fix rather than a refactor of the component"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Rigorous review of PR #105. It adds `strictMode: true` to the service config as a secure default. A base config layer loaded later in the merge order already sets `strictMode: false`, so the new default never takes effect.",
+      "expected_output": "Agent checks the config merge order, confirms the new default is overridden by a lower-precedence-later layer, and reports the security control as unreachable. Quotes both config entries and states the merge order as evidence.",
+      "files": [],
+      "assertions": [
+        {"id": "checks-config-precedence", "description": "Verifies the config merge/precedence order rather than assuming the new value wins"},
+        {"id": "reports-control-unreachable", "description": "Frames the finding as a security control that does not take effect, not as a style issue"},
+        {"id": "quotes-both-layers", "description": "Quotes the new setting and the overriding base-layer setting"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Rigorous review of PR #106. The changed function indexes `items[0]` without a length check, which looks like it will throw on empty input. The only caller guards with `if (!items.length) return` three lines earlier, and a unit test covers the empty case.",
+      "expected_output": "Agent forms the hypothesis, then refutes it by reading the caller and the test, and does NOT report it as a finding. Mentions the checked path in the non-findings block instead.",
+      "files": [],
+      "assertions": [
+        {"id": "refutes-not-reports", "description": "Does not report the unguarded index as a finding"},
+        {"id": "reads-caller", "description": "Opens the caller and the test rather than reasoning only from the changed function"},
+        {"id": "records-as-non-finding", "description": "Surfaces the checked path in the non-findings block rather than silently dropping it"},
+        {"id": "no-hedged-finding", "description": "Does not report it as a low-confidence or 'worth double-checking' finding as a compromise"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Rigorous review of PR #107 — a small, well-tested change with nothing wrong with it.",
+      "expected_output": "Agent still runs preflight, still works all seven pillars, reports zero findings, and emits a full non-findings block naming each pillar checked and how it knows it is clean. Does not invent a nit to justify the review.",
+      "files": [],
+      "assertions": [
+        {"id": "non-findings-block-present", "description": "Emits the checked-no-concern block even with zero findings"},
+        {"id": "names-pillars", "description": "Names the specific pillars checked and the evidence for each, not a blanket 'looks fine'"},
+        {"id": "no-invented-nits", "description": "Does not manufacture a low-value finding to justify the review"}
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Rigorous review of PR #108 in a repo whose CI workflow runs `make check` and `make test`, and which has no `preflight` npm script.",
+      "expected_output": "Agent discovers the gates from the Makefile and the CI workflow, runs `make check` and `make test` in a throwaway worktree before reading the diff, logs each exit code in a table, and verifies the source tree is left clean afterwards. Does not invoke `npm run preflight`.",
+      "files": [],
+      "assertions": [
+        {"id": "discovers-not-assumes", "description": "Derives the gate commands from the Makefile and/or CI workflow instead of assuming a package-script name"},
+        {"id": "no-hardcoded-preflight", "description": "Never runs or suggests `npm run preflight`"},
+        {"id": "preflight-before-reading", "description": "Runs the gates before analysing the diff, per phase ordering"},
+        {"id": "exit-codes-logged", "description": "Reports each gate's exit code, including passing ones"},
+        {"id": "leaves-no-trace", "description": "Uses a throwaway worktree and verifies the source tree is clean afterwards"}
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Rigorous review of PR #109. Find the issues and post the review.",
+      "expected_output": "Agent completes phases 1 through 6, then before posting shows the exact body, every inline comment with file and line, and the intended COMMENT event, and asks for explicit approval. After posting it reads back the review state and inline-comment count from the API and reports the actual numbers.",
+      "files": [],
+      "assertions": [
+        {"id": "confirms-content-before-post", "description": "Shows the full body and every inline comment and gets explicit approval before posting"},
+        {"id": "comment-event-default", "description": "Uses a COMMENT event; does not choose APPROVE or REQUEST_CHANGES unprompted"},
+        {"id": "verifies-server-side", "description": "Reads the review state and comment count back from the API after posting and reports the actual numbers"},
+        {"id": "no-praise-no-nits", "description": "Posted text states concerns and why they matter, with no compliments and no nitpicks"}
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Rigorous review of PR #110 in a Rust repo. There is no package.json, no Makefile and no Justfile — only Cargo.toml and a single CI workflow whose steps read `$BUILD_CMD test --locked --target=${{ matrix.job.target }}` and `cargo clippy --locked --all-targets`.",
+      "expected_output": "Agent probes the language manifest as well as the task runners, finds Cargo.toml, reads the primary CI workflow, and translates the templated steps into plain local invocations (`cargo test --locked`, `cargo clippy --locked --all-targets`) before running them. Does not declare the repo unverified-by-tooling, and does not paste an unexpanded `${{ }}` step into a shell.",
+      "files": [],
+      "assertions": [
+        {"id": "probes-language-manifest", "description": "Looks for Cargo.toml/go.mod/pyproject.toml etc., not only npm/Make/Just task runners"},
+        {"id": "not-declared-unverified", "description": "Does not conclude that no gates are discoverable in a repo that clearly has them"},
+        {"id": "translates-ci-templates", "description": "Converts templated CI steps into plain local commands rather than executing `${{ ... }}` or `$BUILD_CMD` verbatim"},
+        {"id": "picks-primary-workflow", "description": "Reads the merge-gating workflow rather than scraping every workflow file"}
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Rigorous review of the current working-tree changes. A live Hunk session is open on this repo. The review produced six findings: four anchor to files in the diff, one is about a config file the change does not touch, and one is a whole-change premise finding. Preflight passed all gates.",
+      "expected_output": "Agent loads the hunk-review skill for CLI mechanics, reads the session's file/hunk structure, places only the four anchorable findings as a single batch labelled with an author, and keeps the other two plus the preflight table and non-findings block in the terminal report. Emits the full report regardless, including the four findings placed inline.",
+      "files": [],
+      "assertions": [
+        {"id": "defers-to-hunk-review-skill", "description": "Loads the bundled hunk-review skill for command syntax rather than guessing flags or restating them"},
+        {"id": "partitions-before-submitting", "description": "Reads the session file/hunk structure and excludes the non-anchorable findings before submitting, rather than submitting all six"},
+        {"id": "single-batch", "description": "Places the anchorable findings in one batch rather than one call per finding"},
+        {"id": "report-still-complete", "description": "Terminal report contains all six findings plus the preflight table and non-findings block, not only the two that could not be placed"},
+        {"id": "no-unrequested-reload", "description": "Does not reload or renavigate the live session to make the unanchorable findings fit"}
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Rigorous review of the current working-tree changes. Hunk is installed but no session is open for this repo.",
+      "expected_output": "Agent detects the absent session by exit code, does not treat it as an error or halt the review, produces the complete terminal report, and may offer to place inline notes if the user opens Hunk on this change.",
+      "files": [],
+      "assertions": [
+        {"id": "degrades-gracefully", "description": "Review completes and the full report is produced; the missing session never blocks or aborts it"},
+        {"id": "exit-code-detection", "description": "Detects the missing session via exit status rather than parsing JSON output, which is not JSON on the error path"},
+        {"id": "no-invented-session", "description": "Does not claim notes were placed, and does not launch the Hunk TUI itself"}
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Rigorous review of PR #204. The user has uncommitted work in their current checkout that they are actively editing.",
+      "expected_output": "Agent creates a dedicated review worktree with `wt switch pr:204 --no-cd`, recovers its path from `wt list --format json`, and runs every git and preflight command against that path. The user's checkout is never modified, and the report says so. The worktree is torn down with `wt remove` only after the review is reported.",
+      "files": [],
+      "assertions": [
+        {"id": "uses-wt-switch-pr", "description": "Creates the review worktree with `wt switch pr:204`, not `gh pr checkout` or a branch switch in the current checkout"},
+        {"id": "no-cd-and-explicit-path", "description": "Passes --no-cd and recovers the worktree path from `wt list`, then targets later commands at that path rather than assuming cwd changed"},
+        {"id": "user-checkout-untouched", "description": "Never runs install, codegen, checkout, or stash against the user's working tree, and states that it was untouched"},
+        {"id": "teardown-after-report", "description": "Removes the worktree only after the review is reported, not before the findings that cite it are written"}
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Rigorous review of PR #205. Preflight passes every gate, but running the project's install step rewrites the committed lockfile, leaving the worktree dirty.",
+      "expected_output": "Agent inspects the churn with `git status --porcelain` and reports the lockfile drift as a finding — the committed lockfile is out of sync with the manifest — rather than discarding it or forcing the worktree removal to get past it.",
+      "files": [],
+      "assertions": [
+        {"id": "reads-churn", "description": "Runs a status check after the gates and inspects what changed rather than assuming the worktree is disposable"},
+        {"id": "reports-lockfile-drift", "description": "Reports the regenerated lockfile as a finding about artifact/source drift"},
+        {"id": "no-blind-force", "description": "Does not reach for `wt remove --force` or `-f` before accounting for the churn"},
+        {"id": "gates-still-logged", "description": "Still logs every gate's exit code, including the passing ones"}
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Rigorous review of PR #206. It changes the signature of an exported function `resolveTenant`. Two callers import it under an alias and one module re-exports it.",
+      "expected_output": "Agent uses ast-grep for structural patterns and the semantic server's reference lookup to find every dependent, catching the aliased imports and the re-export that a text search for `resolveTenant` would miss. Reports any caller not updated for the new signature. Scopes the sweep to changed files and their dependents.",
+      "files": [],
+      "assertions": [
+        {"id": "structural-before-text", "description": "Reaches for ast-grep and the semantic reference lookup before grep/ripgrep"},
+        {"id": "finds-aliased-and-reexport", "description": "Finds the aliased imports and the re-export rather than only literal-name matches"},
+        {"id": "no-deprecated-sg", "description": "Invokes ast-grep, never the deprecated `sg` binary"},
+        {"id": "scoped-sweep", "description": "Scopes results to changed files and their dependents; does not report pre-existing repo-wide hits as findings"}
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Rigorous review of the current changes. A memory query for review preferences returns only unrelated operational facts — shell `return` semantics, a migration path bug, worktree cleanup notes — several with high salience scores.",
+      "expected_output": "Agent queries memory in Phase 0, recognises that none of the returned memories state a review or code-style preference, discards them all, and reviews against the functional-programming baseline from references/pillars.md. Does not treat any operational fact as a preference.",
+      "files": [],
+      "assertions": [
+        {"id": "queries-memory-first", "description": "Runs the Phase 0 memory query before scoping or analysing"},
+        {"id": "relevance-gate-applied", "description": "Discards the unrelated memories despite high salience rather than adopting them as preferences"},
+        {"id": "fp-baseline-holds", "description": "Reviews against the functional-programming baseline regardless of what memory returned"},
+        {"id": "no-invented-preference", "description": "Does not infer or fabricate a reviewer preference from an operational fact"}
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Rigorous review of PR #207 in a repo containing .allium specifications. The PR description says the change adds retry-on-timeout, but the spec for that process describes no retry behaviour and the change adds no test for the retry path.",
+      "expected_output": "Agent treats the spec as authoritative over the PR description, runs allium check and allium plan to derive test obligations, reports the spec/code divergence and which side moved, and reports the untested retry path as a testability finding sourced to the spec obligation rather than to opinion.",
+      "files": [],
+      "assertions": [
+        {"id": "spec-outranks-description", "description": "Treats the .allium spec as the authoritative statement of intent over the PR description prose"},
+        {"id": "uses-allium-plan", "description": "Derives test obligations with allium plan rather than judging test adequacy by feel"},
+        {"id": "reports-divergence-direction", "description": "States whether the spec or the code is the side that moved instead of assuming the code is wrong"},
+        {"id": "testability-finding-sourced", "description": "Reports the untested path citing the spec obligation as its source"}
+      ]
+    }
+  ]
+}
