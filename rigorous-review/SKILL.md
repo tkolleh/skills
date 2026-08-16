@@ -22,11 +22,7 @@ metadata:
 
 # Rigorous Review
 
-Review changes the way a defect costs real money: run the project's own gates before reading a line, quote the evidence for every claim, try to disprove your own findings, and say what you checked and found clean.
-
-A false finding costs more than a missed one. Optimise for precision.
-
-Work the phases in order. Never skip or reorder — each depends on the one before it.
+Review changes the way a defect costs real money: run the project's own gates before reading a line, quote the evidence for every claim, try to disprove your own findings, and say what you checked and found clean. A false finding costs more than a missed one. Optimise for precision. Work the phases in order.
 
 ---
 

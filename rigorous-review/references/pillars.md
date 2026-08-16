@@ -24,7 +24,7 @@ These are stylistic positions, not universal truths. Apply them; do not moralise
 
 ### Functional-programming bias
 
-Prefer immutable state, pure functions, and referential transparency. Prefer declarative constructs over imperative loops where the declarative form is at least as clear. Flag in-place mutation of a shared or caller-owned value — that is a correctness concern, not a style one.
+Prefer immutable state, pure functions, and referential transparency. Prefer declarative constructs over imperative loops where the declarative form is at least as clear. Flag in-place mutation of a shared or caller-owned value — that is a correctness concern, not a style one. Prefer local reasoning and composition.
 
 ### Anti-over-engineering
 
