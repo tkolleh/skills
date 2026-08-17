@@ -1,0 +1,39 @@
+{
+  "skill_name": "alloy-structural-analysis",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "We have an Allium spec describing a settlement counter that should never go negative, and a corresponding Alloy model at settlement.als with a temporal check `AlwaysNonNegative` using a var Int field and `always`/prime-notation state transitions. Run a rigorous structural analysis to confirm this property actually holds — I want a real model-checked result, not just 'the tests pass'.",
+      "expected_output": "Agent invokes `alloy exec -s electrod.nuxmv -t json -f -o <dir> settlement.als`, does not gate the result on the process exit code, parses the verdict from receipt.json/stdout instead, states the checked scope bound explicitly alongside the UNSAT verdict, and self-diagnoses via the debug-log grep for kodkod.solvers.api.NativeCode to confirm electrod/nuXmv actually ran rather than a silent bounded-solver fallback (since an UNSAT on a temporal property without this check is ambiguous between 'proved' and 'search couldn't construct a trace').",
+      "files": [],
+      "assertions": [
+        {"id": "no-exit-code-gating", "description": "Never treats alloy exec's process exit code as the success/failure signal"},
+        {"id": "parses-receipt-or-stdout", "description": "Parses receipt.json or stdout text (UNSAT/SAT) for the actual verdict"},
+        {"id": "states-scope-bound", "description": "States the numeric scope bound (Int width, step count) the UNSAT was checked at, not just 'UNSAT'"},
+        {"id": "debug-verifies-temporal", "description": "Runs the debug-log grep to confirm electrod and nuXmv actually executed before trusting a temporal UNSAT"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Our fraud case status spec has a rule where cases can move from Open to UnderReview to Closed, but I just added a new EscalatedReview status value to the Allium spec and want to formally verify no case can get permanently stuck there before I model-check the broader workflow invariant in Alloy.",
+      "expected_output": "Agent recognizes that adding a status enum value requires corresponding Witness rule declarations for transitions into/out of it, checks whether allium check reports allium.status.unreachableValue or allium.status.noExit warnings for EscalatedReview, and treats a missing Witness rule as a translation-blocking issue to flag back rather than silently encoding an under-connected state graph into the Alloy model and reporting a possibly-vacuous UNSAT.",
+      "files": [],
+      "assertions": [
+        {"id": "checks-witness-rules", "description": "Checks for allium.status.unreachableValue/noExit warnings tied to the new status value before translating"},
+        {"id": "flags-gap-not-silent-encode", "description": "Flags a missing Witness rule back rather than silently building an Alloy model on an incomplete state graph"},
+        {"id": "runs-multifile-check", "description": "Runs allium check against the full dependent spec set together, not the single file in isolation"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have two .als files in .allium/alloy/ that both define a check named `NoOrphanStage` (copy-paste leftover from an earlier draft). Run the full check batch and tell me if the orphan-stage invariant holds across the workflow.",
+      "expected_output": "Agent catches the duplicate command name during translation/scoping (Phase B), before invoking Alloy, explaining that receipt.json's commands field is a dict keyed by name so the second result would silently overwrite the first with no error — and either asks which one to keep/rename or renames one deterministically, rather than invoking the batch as-is and reporting a result that's actually just one of the two checks.",
+      "files": [],
+      "assertions": [
+        {"id": "catches-duplicate-name-before-invoke", "description": "Identifies the duplicate command name before running alloy exec, not after seeing a short result set"},
+        {"id": "explains-collapse-mechanism", "description": "States that receipt.json's commands dict would silently collapse the duplicate, last-write-wins"},
+        {"id": "does-not-silently-report-partial-result", "description": "Does not report a verdict for 'NoOrphanStage' as if both checks ran when only one result would actually be present"}
+      ]
+    }
+  ]
+}
