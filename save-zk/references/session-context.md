@@ -51,9 +51,14 @@ zk daily
 ```
 
 - Resolve path only via `zk daily` (or mark unavailable). Never invent a daily path.
-- After a successful Session Note write, append **one** back-link line, e.g.:
+- After a successful Session Note write, append **one** back-link line, using the Session
+  Note's real path (relative to notebook root, extension dropped) — zk resolves `[[...]]` by
+  path, not title, so a title-only link is a dead link:
 
-  `- Session Note updated: [[Note-Key Title]]` or created variant.
+  `- Session Note created: [[projects/<real-filename-stem>|<Title>]]` (or updated variant).
+
+  When unsure of the exact on-disk stem (e.g. after a `zk new` filename-template surprise),
+  confirm with `zk list --format link -m "<title or key>"` before writing the line.
 
 - **Primary / best-effort:** Session Note success + Daily fail → keep Session Note, **warn**. Session Note fail → skip Daily.
 - Do not roll back a good Session Note because Daily failed.

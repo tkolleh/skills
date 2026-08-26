@@ -10,7 +10,8 @@ The Living Head is the only region a save may **fully replace** so the top of th
 4. **Executive Summary & Key Outcomes** (Primary Goal / Result / Core Decision)
 5. **Key Findings & Invariants** — markdown **table only** (Category | Finding | Impact/Next); full table replaced each save
 6. **Visual** (optional) — current `d2`/`mermaid` fences and/or metric tables; omit or clear when N/A
-7. **Related** links list (refresh to real targets; Daily link required when Daily resolved)
+7. **Related** links list (refresh to real, path-resolvable targets — `[[path|Title]]`, never
+   `[[Title]]` alone; Daily link required when Daily resolved)
 
 ## Must not touch
 

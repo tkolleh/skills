@@ -40,9 +40,16 @@ tags: [<note-key-lowercase-when-issue>]
 
 ## Related
 
-- [[daily-YYYY-MM-DD]] (or notebook daily title)
+- [[journals/daily/YYYY_MM_DD|<Daily title>]]
 <!-- Optional real wikilinks only; never invent titles -->
 ```
+
+**Wikilink syntax — resolve by path, not title:** zk resolves `[[...]]` by filename/path,
+not by note title (title-text-only links produce dead links that goto-definition and
+`zk list --broken-links` will flag). Always write `[[relative/path/without/extension|Display Title]]`,
+never `[[Display Title]]` alone. Get the exact path from a source already resolved this run
+(Phase C/D/H's `zk new`/`zk daily` output, or `zk list --format link -m "<query>"` to confirm) —
+never hand-guess a slug or title text into a link target.
 
 Rules on create:
 
@@ -78,3 +85,4 @@ Rules on create:
 - Base64 embeds, separate asset writes from save-zk
 - Second full Key Findings table inside an Update
 - Invented `[[wikilinks]]`
+- Title-only `[[wikilinks]]` (e.g. `[[Some Note Title]]`) — always `[[path|Title]]`
