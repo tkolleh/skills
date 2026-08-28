@@ -1,0 +1,23 @@
+{
+  "skill_name": "design-doc",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We need to add real-time inventory sync between our warehouse management system and our e-commerce storefront. Right now inventory counts are updated via a nightly batch job, but we're seeing overselling on high-demand items because the storefront shows stale counts for up to 24 hours. Can you help me write a TDD for this? We're a small team (4 engineers) and this needs to ship in about 6 weeks.",
+      "expected_output": "The agent should NOT produce a full TDD in one shot. It should acknowledge the intent, give a rough scope read, and ask 2-3 targeted constraint questions (e.g. expected update latency requirement, current architecture/message bus availability, read/write volume) before proceeding. It should end its turn and wait for the user's response rather than continuing through all five states unprompted.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "quick one -- I want to add a `/health` endpoint to our internal Go microservice that just returns 200 OK with the current git SHA and uptime. Nothing fancy, no auth needed, it's just for our k8s liveness probe. Can you write up a short design doc for this?",
+      "expected_output": "The agent should recognize this as low-complexity and say so explicitly, then collapse/streamline the state machine per the 'Matching Rigor to Risk' guidance rather than running the full 5-state ceremony with heavy ADR trade-off analysis for a trivial single-decision feature. It should not manufacture elaborate security/risk sections for a task with minimal real risk.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm about to start building a new `calculateShippingCost` function and I want to do this properly with TDD -- write the failing test first, then the minimal implementation, then refactor. Can you help me pair on this?",
+      "expected_output": "The agent should NOT invoke the design-doc/collaborative-tdd skill. This is a request for Test-Driven Development (the coding practice: red-green-refactor), not a Technical Design Document. The agent should recognize the ambiguity and either directly help with TDD-the-practice (write a failing test, minimal implementation, refactor) or explicitly clarify which 'TDD' the user means, but should not launch into the Technical-Design-Document state machine (asking about NFRs, ADRs, rollout plans, etc.) for what is clearly a request to pair-program a single function using red-green-refactor.",
+      "files": []
+    }
+  ]
+}
