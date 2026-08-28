@@ -8,11 +8,9 @@ description: >-
   filter, format, aggregate, or in-place JSON transforms. Do not use for binary
   files, CSV/XML conversion, or general scripting unrelated to JSON.
 license: MIT
-compatibility: "Requires jq CLI on PATH (jq 1.6+)"
+compatibility: opencode
 metadata:
   audience: developers
-  workflow: data-engineering
-  tags: "jq, json, cli, data"
   tools: "bash, jq"
 ---
 
