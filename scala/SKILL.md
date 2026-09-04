@@ -113,10 +113,7 @@ formatting differences, and works without any indexing step.
 
 ### 3. Semantic/LSP tool — compiler-accurate confirmation (if available)
 
-If your environment exposes a semantic-code or LSP-backed tool (e.g. Claude Code's `serena` MCP
-server, which is Metals-backed for Scala — `find_referencing_symbols`, `find_implementations`,
-`get_diagnostics_for_file`), use it when you need something neither scalex nor ast-grep can give,
-because neither does real type-checking:
+If your environment exposes `start_metals_mcp` (start_metals_mcp is a shell function), which is Metals-backed for Scala — `find_referencing_symbols`, `find_implementations`, `get_diagnostics_for_file`, you must **use it** because neither scalex nor ast-grep does real type-checking:
 
 - Implicit/given resolution (which instance the compiler actually selects)
 - Type alias resolution across files
