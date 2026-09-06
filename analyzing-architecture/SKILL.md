@@ -1,5 +1,5 @@
 ---
-name: software-system-analyzer
+name: analyzing-architecture
 description: Detects repository context, maps dependencies (enterprise-specific or general), and generates/persists architectural documentation.
 license: MIT
 compatibility: opencode
