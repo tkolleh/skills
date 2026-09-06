@@ -9,5 +9,10 @@ A collection of AI agent "skills" following the [OpenCode agent skills](https://
 **Setup a skill**
 
 ```zsh
-npx skills@latest add tkolleh/skills/ -g -a opencode -a claude-code
+skillshare install tkolleh/skills/<skill>
+skillshare sync
 ```
+
+Skills are installed from this repo into the shared skillshare source
+(`~/.config/skillshare/skills/`), then synced to the configured targets
+(Claude Code, OpenCode, universal).
