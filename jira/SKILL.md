@@ -1,26 +1,43 @@
 ---
 name: jira
 description: >
-  Manage Jira issues, sprints, and epics with the jira CLI (ankitpokhrel/jira-cli).
-  Trigger on: jira, jira-cli, ticket, issue key (e.g. PROJ-123), epic, sprint,
-  transition/move ticket, comment on ticket, assign ticket, JQL, create bug/story,
-  "what's on my board", "my open issues". Use when the user wants to find, read,
-  create, update, transition, comment on, assign, or link Jira work items — or
-  list sprints/epics — via CLI. Do not use for Todoist, GitHub Issues, Linear, or
-  generic project planning with no Jira involvement.
+  Manage Jira issues, sprints, and epics via CLI — jira-cli (ankitpokhrel/jira-cli)
+  for bearer/basic-auth instances, acli (Atlassian's official CLI) for OAuth-only
+  Jira Cloud tenants. Trigger on: jira, jira-cli, acli, ticket, issue key (e.g.
+  PROJ-123), work item, epic, sprint, transition/move ticket, comment on ticket,
+  assign ticket, JQL, create bug/story, "what's on my board", "my open issues".
+  Use when the user wants to find, read, create, update, transition, comment on,
+  assign, or link Jira issues/work items — or list sprints/epics/boards — via
+  CLI, including setups with more than one Jira instance behind different auth
+  models. Do not use for Todoist, GitHub Issues, Linear, or generic project
+  planning with no Jira involvement.
 license: MIT
-compatibility: "Requires jira CLI (https://github.com/ankitpokhrel/jira-cli) authenticated via `jira init`. Optional: jq, pandoc (gfm→jira)."
+compatibility: "Requires jira CLI (https://github.com/ankitpokhrel/jira-cli) authenticated via `jira init`, and/or acli (https://acli.atlassian.com) authenticated via `acli auth login` + `acli jira auth login`. A user may have one or both configured, pointed at different Jira instances. Optional: jq, pandoc (gfm→jira)."
 metadata:
   audience: developers
   workflow: project-management
-  tools: "jira, jq, pandoc"
+  tools: "jira, acli, jq, pandoc"
 ---
 
 # Jira CLI
 
-Bridge natural language to `jira` (jira-cli). Portable across users, projects, Cloud/Server/DC — never hardcode project keys, usernames, servers, or board IDs.
+Bridge natural language to a Jira CLI. Portable across users, projects, instances, and auth models — never hardcode project keys, usernames, servers, tenant hostnames, or board IDs.
 
-Work phases in order for each request. Skip only phases marked optional when their precondition is unmet.
+A user may have **more than one Jira instance** configured on their machine (e.g. an on-prem/Server/DC instance alongside a separate Cloud tenant), each requiring a different tool and reachable through a different local alias or shell function. Work phases in order for each request. Skip only phases marked optional when their precondition is unmet.
+
+## Phase 0 — Pick the right CLI / instance (multi-instance setups only)
+
+Skip this phase entirely if only one Jira CLI is configured — go straight to Prerequisites below.
+
+If more than one is configured:
+
+1. **Detect what's available** — check for both tools before assuming: `command -v jira`, `command -v acli`, and any wrapper shell functions/aliases the user has defined for each instance. List candidates rather than guessing a name: `alias | grep -i jira` and `declare -f | grep -i jira` (or `type -a` per candidate name) to surface anything ending in or containing `jira` (e.g. a `*jira` naming pattern like `ckjira`/`workjira`). If that turns up more than one, ask the user which maps to which instance rather than assuming from the name alone. Do not hardcode specific alias names in the skill — they are user-chosen and machine-specific.
+2. **Match the request to an instance** — use whatever the user's project/team/board convention already implies (explicit project key prefix, current repo, or a stated instance name). If ambiguous and more than one instance plausibly applies, ask once rather than guessing which instance a write should land on.
+3. **Auth model determines the tool, not preference** — this is a hard technical constraint, not a style choice:
+   - An instance that accepts classic API-token **basic or bearer auth** → use `jira` (jira-cli). Config typically lives at a path set by `JIRA_CONFIG_FILE` or `~/.config/.jira/*.yml`; a multi-instance setup may keep one config file per instance and select between them via that env var or a wrapper function.
+   - An instance whose Jira Cloud tenant **enforces OAuth** (classic token Basic/Bearer auth returns 401/403 regardless of token freshness — this is an org-wide Atlassian security policy on that tenant, not an expired-token problem) → jira-cli's `--auth-type basic|bearer|mtls` cannot authenticate at all; use `acli` instead, which has a native OAuth 2.0 login flow. See `references/acli-jira.md`.
+   - If unsure which category an instance falls into, `jira me` (or the equivalent auth-status check for the wrapper in use) failing with a 401/403 on a freshly verified token, or an error mentioning OAuth/Connect Session Auth, is the signal to switch tools rather than keep retrying token regeneration.
+4. **Never mix command grammars** — jira-cli and acli have different flag shapes for the same intent (positional issue key vs. `--key`, different flag names). Once you've picked a tool for this request, use only that tool's syntax for the rest of the exchange. jira-cli syntax is documented inline below and in `references/{examples,jql,formatting,transitions}.md`; acli syntax is documented in `references/acli-jira.md`.
 
 ## Prerequisites (fail fast)
 
@@ -29,9 +46,11 @@ command -v jira >/dev/null || { echo "jira CLI missing — install ankitpokhrel/
 jira me >/dev/null 2>&1 || { echo "jira not authenticated — run: jira init"; exit 1; }
 ```
 
-On failure: report the exact fix (`brew install jira-cli` / `jira init`) and STOP. Do not invent issue keys or statuses.
+On failure: report the exact fix (`brew install jira-cli` / `jira init`) and STOP. Do not invent issue keys or statuses. If this instance is actually an OAuth-only Cloud tenant (see Phase 0), the fix is switching to `acli`, not retrying `jira init` with a new token.
 
 Optional tools: `jq` (JSON field extract), `pandoc` (Markdown→Jira wiki for descriptions/comments). If missing, prefer `--plain` text or pass simple plain text bodies.
+
+The rest of this file (Phases 1–4) documents **jira-cli** specifically. For **acli**, see `references/acli-jira.md`, which mirrors this same phase structure for that tool's command grammar.
 
 ## Phase 1 — Resolve context
 
@@ -119,6 +138,8 @@ After each mutating command: state key, action, new status/assignee if known. On
 - Hardcoding one company's project/board/username into commands
 - Bulk edit/delete without confirmation
 - Dumping raw multi-issue JSON into the user chat
+- Mixing jira-cli and acli flag syntax in the same command, or guessing acli flags by analogy to jira-cli (they differ — see `references/acli-jira.md`)
+- Retrying token regeneration against an OAuth-only Cloud tenant instead of switching tools (Phase 0)
 
 ## Examples
 
