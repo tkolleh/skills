@@ -1,24 +1,24 @@
 ---
 name: scala
-description: "Enforces required tool order for Scala/Java projects. Compile/test: use the `bloop` CLI directly (bloop compile, bloop test) — never `sbt compile`/`sbt test`. Search/navigate: scalex first, then ast-grep, then a semantic/LSP-aware tool if one is available, then grep/ripgrep as last resort — this order is unconditional, even for single-file lookups. Trigger on: \"compile this\", \"run the tests\", \"bloop compile\", \"sbt test\", \"build the project\", \"find where X is defined\", \"who implements this trait\", \"find usages of\", \"search this Scala codebase\", or any Scala/Java compile, test, or code-search request."
+description: "Enforces required tool order for Scala/Java projects. Compile/test: use the sbt server directly (a warm, long-running `sbt` shell session, or its BSP interface) — never the `bloop` CLI. Search/navigate: scalex first, then ast-grep, then a semantic/LSP-aware tool if one is available, then grep/ripgrep as last resort — this order is unconditional, even for single-file lookups. Trigger on: \"compile this\", \"run the tests\", \"sbt compile\", \"sbt test\", \"build the project\", \"find where X is defined\", \"who implements this trait\", \"find usages of\", \"search this Scala codebase\", or any Scala/Java compile, test, or code-search request."
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
   workflow: scala-tooling
-  tags: "scala, java, bloop, scalex, ast-grep, code-search, compile, test"
-  tools: "bloop, scalex, ast-grep, grep"
+  tags: "scala, java, sbt, scalex, ast-grep, code-search, compile, test"
+  tools: "sbt, scalex, ast-grep, grep"
 ---
 
 ## What this skill enforces
 
 Two hard rules for working in Scala/Java projects, both aimed at the same problem: generic,
-language-agnostic tool defaults (`sbt compile`, `grep`) are slow or semantically blind compared to
-Scala-aware tools that already exist in this environment. Following the generic default "because
-it's obvious" silently produces slower feedback loops or missed call sites — this skill exists so
-that doesn't happen by default.
+language-agnostic tool defaults (a cold `sbt` invocation per command, `grep`) are slow or
+semantically blind compared to Scala-aware tools and usage patterns that already exist in this
+environment. Following the generic default "because it's obvious" silently produces slower
+feedback loops or missed call sites — this skill exists so that doesn't happen by default.
 
-1. **Compilation and testing MUST go through the `bloop` CLI directly.**
+1. **Compilation and testing MUST go through a warm sbt server, never the `bloop` CLI.**
 2. **Code search/navigation MUST follow this fallback order: scalex → ast-grep → semantic/LSP tool
    (if available) → grep.** This order is unconditional — it applies even when you already know
    which file to look in.
@@ -28,42 +28,37 @@ pattern-matching CLI, an optional semantic/LSP layer) rather than assuming one s
 plugin or MCP ecosystem. Use whichever concrete tool your environment provides for each role —
 see the invocation notes under each tool below for how that resolves in Claude Code specifically.
 
-## Compile and test: bloop only
+## Compile and test: sbt server, never bloop
 
-Use `bloop compile <project>` and `bloop test <project>` directly. Do **not** use
-`sbt compile` / `sbt test` for this purpose, and do not rely on Metals to trigger a build
-implicitly.
+Use a long-running `sbt` shell session (or the sbt BSP server, if your editor/agent integration
+drives one) for `compile` and `test`. Do **not** shell out to the `bloop` CLI, and do not enable
+or rely on a Bloop build server for this project.
 
-**Why:** Bloop runs a persistent build server with warm incremental-compilation state. `sbt`
-reloads its JVM and rebuilds its build graph on every invocation. Once the Bloop daemon is warm,
-per-module compile feedback is dramatically faster than a cold `sbt` cycle — a from-scratch
-project compile through a healthy Bloop daemon has been measured at ~74s on this class of project,
-versus multi-minute `sbt` cycles when the daemon state is stale or absent.
+**Why:** Bloop compiles *files*, not sbt *tasks* — it silently misses anything produced by an
+sbt task override (generated sources, sbt-plugin-driven codegen) because it never runs the task
+that would produce them. It also runs as a single daemon shared across the whole machine, whose
+JVM flags and version are fixed by whichever client starts it first and silently ignored
+thereafter for everyone else — across multiple worktrees this produces cross-branch cache
+contention and hard-to-diagnose OOMs that present as "not enough heap." None of that exists with
+the sbt server: staying inside one warm `sbt` shell session (rather than invoking `sbt <task>`
+fresh from the command line each time) avoids sbt's own JVM-startup and build-graph-reload cost,
+which is the actual source of "cold sbt is slow" — not a reason to reach for Bloop.
 
 **Precondition — check before running anything:**
 
 ```bash
-which bloop
+which sbt
 ```
 
-If this returns nothing, **stop and report it** rather than silently falling back to `sbt`:
+If this returns nothing, **stop and report it** rather than guessing at an install path.
 
-```
-bloop CLI not found on PATH. Install it with:
-  cs install bloop        # latest
-  cs install bloop:X.Y.Z  # pinned — check .bloop/*.json or the project's Metals/Bloop config
-                          # for the version this project's daemon expects
-```
+**How to stay warm:** open one `sbt` shell per project/worktree and issue `compile`/`test`/
+`testOnly` inside it, rather than invoking `sbt compile` etc. as a new process each time. If your
+agent or editor integration talks BSP, prefer sbt's own BSP server (`defaultBspToBuildTool` /
+equivalent) over Bloop for the same warm-server benefit without the shared-daemon problems above.
 
-Do not auto-install without asking — this changes the user's environment.
-
-**Documented exception:** plain `sbt` is still correct for running a specific test *suite* via
-`testOnly`, and for `scalafmtOnly`. This skill does not relitigate that — it only replaces
-`sbt compile`/`sbt test` for the whole-module/green-gate case.
-
-**Known gotcha:** a cold Bloop daemon can make a compile exceed two minutes and appear to hang or
-get backgrounded. That's expected behavior on a cold start, not a failure — let it finish rather
-than killing and retrying.
+**Documented exception:** none needed — `testOnly` and `scalafmtOnly` were already the sbt-shell
+path; this skill now applies uniformly to compile, test, and those subcommands.
 
 ## Search and navigate: ordered, unconditional fallback
 
@@ -92,7 +87,7 @@ for exact syntax (it resolves to a versioned bootstrap script, not a bare `scale
 PATH). In OpenCode or any other host, use whatever local `scalex` skill/plugin/CLI installation is
 configured; if none is installed, say so explicitly rather than silently skipping to ast-grep.
 
-**Do not `which scalex` as a precondition check.** Unlike `bloop`, scalex typically has no bare
+**Do not `which scalex` as a precondition check.** Unlike `sbt`, scalex typically has no bare
 PATH binary — it's resolved via a plugin/skill bootstrap, so a `which scalex` will often report
 "not found" even when scalex is fully available. Treating that as "scalex unavailable, fall
 through to ast-grep" is a false negative, not a legitimate fallback trigger. The only reliable
