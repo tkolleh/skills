@@ -202,6 +202,73 @@
         {"id": "reports-divergence-direction", "description": "States whether the spec or the code is the side that moved instead of assuming the code is wrong"},
         {"id": "testability-finding-sourced", "description": "Reports the untested path citing the spec obligation as its source"}
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "Rigorous review of PR #208 in a Go service. The PR's stated purpose is to make audit writes durable: it changes the audit call in the order-cancel handler so the write happens before the handler returns. The diff replaces `go a.write(ctx, rec)` with `go a.writeAsync(ctx, rec)`. `writeAsync` is defined in an unchanged file and its body is `go func() { _ = a.write(ctx, rec) }()` — it spawns and returns immediately, and the handler's `ctx` is the request context, cancelled when the client disconnects. The error path in `write` logs cancellation at debug level.",
+      "expected_output": "Agent recognises Go has detachable effects and cancellation, sweeps the changed path structurally for abandoned work, opens the unchanged callee writeAsync, and reports that the stated durability goal is not met: the write is still detached, the request context cancels it on client disconnect, and the resulting error is swallowed at debug. Anchors the finding PR-level on writeAsync with a load-bearing clause, or diff-anchored on the call site, and quotes both. Severity High or Critical for silent data loss.",
+      "files": [],
+      "assertions": [
+        {"id": "capability-triage", "description": "Identifies detachable effects and cancellation as capabilities present in this language/runtime before sweeping, rather than treating the issue as language-specific trivia"},
+        {"id": "opens-unchanged-callee", "description": "Opens writeAsync, which is not in the diff, rather than reasoning about it from its name or call site"},
+        {"id": "mechanism-vs-effective", "description": "States that the call is present on the right path but the effect it schedules does not complete, distinguishing the two claims"},
+        {"id": "traces-cancellation-and-absorption", "description": "Connects request-context cancellation to the detached write and notes the error is absorbed at debug level, making the loss silent"},
+        {"id": "structural-sweep-used", "description": "Uses a structural pattern to find the abandoned-work shape and does not rely on text search for it"},
+        {"id": "stated-goal-not-met", "description": "Frames the finding as the PR failing its own stated durability purpose, not as a style preference"}
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Rigorous review of PR #209, a long-lived branch now on its fourth review round. In round two a reviewer reported that a retry loop retried on non-idempotent writes; the author replied 'Done' and pushed a fix, and the thread was resolved. Two merges from main later, at current head, the guard that fix added is gone — a conflict resolution dropped it. The diff of the most recent commits does not show the guard being removed.",
+      "expected_output": "Agent builds a prior-findings ledger before analysing, resolves each earlier finding against head rather than against the author's reply, and reports the retry guard as regressed: fixed in round two, absent at head. Names the commit that fixed it and the merge that dropped it, quotes the code at head, and rates it above the original severity because everyone believes it is fixed.",
+      "files": [],
+      "assertions": [
+        {"id": "builds-ledger", "description": "Enumerates prior findings with the commit each was raised at, before starting analysis"},
+        {"id": "verifies-at-head-not-reply", "description": "Resolves the prior finding against the code at head rather than trusting the 'Done' reply or the resolved thread"},
+        {"id": "identifies-regression", "description": "Classifies the finding as regressed — fixed then undone — rather than as a new or unaddressed finding"},
+        {"id": "severity-elevated", "description": "Rates the regression higher than the original defect, because the fix is believed to be in place"},
+        {"id": "names-both-commits", "description": "Names the commit that applied the fix and the one that removed it"},
+        {"id": "addressed-findings-reported-clean", "description": "Lists prior findings that still hold at head in the non-findings block so the author sees they were re-checked"}
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Rigorous review of PR #210 in a TypeScript service. The change adds a new request variant to a handler that matches on a discriminated union generated from a schema. The hand-written match covers every variant named in the source schema file and the compiler is satisfied. The generated type in an unchanged, generated file also carries an `UnknownVariant` case emitted for forward compatibility with clients on a newer schema version, and the match's fallback throws synchronously outside the promise chain, bypassing the error middleware.",
+      "expected_output": "Agent traces inbound to the generated type rather than trusting the hand-written schema file, enumerates the generated type's real variants, and reports that the match is not total: a client on a newer schema version produces UnknownVariant, the fallback throws outside the promise chain, and the error escapes the middleware as an unmapped error. Reports PR-level on the generated file or the fallback with a load-bearing clause.",
+      "files": [],
+      "assertions": [
+        {"id": "reads-generated-code", "description": "Opens the generated type definition rather than reasoning from the hand-written schema or the compiler's satisfaction"},
+        {"id": "enumerates-real-variants", "description": "Lists the generated type's actual cases, including the forward-compatibility variant, rather than assuming the match is exhaustive"},
+        {"id": "pr-level-with-clause", "description": "Reports the out-of-diff location as PR-level with a load-bearing clause explaining why the change makes it decisive, rather than dropping it as pre-existing"},
+        {"id": "traces-throw-boundary", "description": "Establishes that the throw happens outside the async boundary and therefore bypasses the error handler, rather than assuming it is caught"},
+        {"id": "reachability-established", "description": "States the concrete condition that produces the unknown variant — a client on a newer schema version — rather than calling it theoretical"}
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Rigorous review of PR #211. The repo's AGENTS.md contains a gotchas section stating that all writes to the ledger table must go through `ledger.Apply`, never through the DAO directly, because Apply maintains an append-only invariant relied on by downstream reconciliation. The PR adds a correction path that calls `ledgerDao.update` directly. Nothing in CI enforces the rule.",
+      "expected_output": "Agent extracts the AGENTS.md gotcha into a checkable assertion during Phase 3, sweeps the changed files structurally for direct DAO writes, and reports the violation citing AGENTS.md by file and line as the authority. Explains the consequence named in the doc — the append-only invariant reconciliation depends on — rather than presenting it as a style preference.",
+      "files": [],
+      "assertions": [
+        {"id": "extracts-assertion-from-docs", "description": "Converts the AGENTS.md gotcha into an explicit checkable assertion rather than reading the file as background context"},
+        {"id": "cites-doc-as-authority", "description": "Cites AGENTS.md by file and line as the source of the rule, the way an acceptance criterion would be cited"},
+        {"id": "structural-sweep-for-rule", "description": "Uses a structural sweep scoped to the changed files to check the assertion, not a text search for the method name"},
+        {"id": "states-documented-consequence", "description": "States the consequence the doc names — the broken append-only invariant and downstream reconciliation — rather than framing it as a convention violation"},
+        {"id": "unenforced-rule-still-finding", "description": "Reports the violation even though no CI check enforces the rule"}
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Rigorous review of PR #212 in a Python service. The change adds a metrics flush to a request handler: `asyncio.create_task(flush_metrics(payload))`. The task handle is not retained. The service is otherwise synchronous-looking and the reviewer is tempted to grep for 'create_task' to find other instances, but two other call sites assign the handle to a variable that is later awaited, and one wraps it in a helper imported under an alias.",
+      "expected_output": "Agent identifies detachable effects as a present capability, uses a structural pattern rather than a text search to find abandoned-task shapes, and distinguishes the unretained handle from the two correctly-awaited call sites. Reports that an unreferenced task may be garbage collected before completion, with the concrete condition. Notes explicitly that a text search for the call name would have conflated all four sites and missed the aliased one.",
+      "files": [],
+      "assertions": [
+        {"id": "structural-over-text", "description": "Uses a structural pattern keyed on the handle being discarded, not a text search for the function name"},
+        {"id": "distinguishes-correct-sites", "description": "Does not flag the call sites that retain and await the handle, showing the sweep discriminates on shape rather than on name"},
+        {"id": "finds-aliased-site", "description": "Accounts for the aliased import that a text search for the bare name would miss"},
+        {"id": "names-gc-consequence", "description": "States the concrete failure — an unreferenced task can be collected before it completes — rather than calling it a style issue"},
+        {"id": "justifies-tool-choice", "description": "Says which tool answered the sweep and why the structural form was required"}
+      ]
     }
   ]
 }

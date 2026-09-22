@@ -56,7 +56,7 @@ Do not fabricate a table you did not produce. Where you cannot execute, say so a
 
 Check every candidate finding against this list before it goes in the report. Anything matching is dropped or moved to non-findings.
 
-- **Pre-existing** — the problem is on a line the change did not touch. Real, but not this PR's.
+- **Pre-existing** — the problem is on a line the change did not touch, *and* the change does not make it decisive. Real, but not this PR's. Before dropping on this rule, test it: can you write the load-bearing clause from `references/finding-schema.md` — newly reached, newly load-bearing, or newly frequent? If you can, the line is unchanged but the finding is this PR's, and it reports as PR-level. If you cannot, drop it. The rule exists to stop wishlists riding along on someone else's change, not to protect a change from the consequences of what it now depends on.
 - **Compiler-catchable** — type errors, missing imports, formatting, unused symbols. The toolchain reports these better than you do; preflight already ran them.
 - **Intentional** — the change in behaviour is the point of the PR, or is stated in the description or a linked ticket.
 - **Explicitly silenced** — a suppression comment with a stated reason. Question a *missing* reason, not the suppression.

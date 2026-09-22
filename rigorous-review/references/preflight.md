@@ -33,6 +33,18 @@ Two cautions the moment you read it:
 - **Pick the primary workflow** — the one gating merges on this branch. Scraping every file surfaces docs, release, and website jobs instead of the build. A repo with seven workflows will hand you the wrong four.
 - **CI steps are templates, not commands.** They carry matrix variables and environment expansions — `${{ matrix.job.target }}`, `$BUILD_CMD`, `${{ env.FEATURES }}`. Translate each into the plain local invocation (`cargo test --locked`), and never paste an unexpanded step into a shell.
 
+## Check the forge before running anything
+
+If CI already ran on the reviewed SHA, read those results first. They are stronger evidence than a local re-run — same commit, same environment, no local toolchain drift — and they cover gates you may not be able to run at all (hosted scanners, cloud-backed integration suites).
+
+```bash
+gh api repos/<owner>/<repo>/commits/<sha>/status
+```
+
+Run gates locally only for what CI did not cover, or when no CI result exists for this exact SHA. Record in the preflight table which source each row came from, and separate code gates from process gates — an approval-count or policy check is red for reasons that have nothing to do with the code, and reporting it as a failing gate misleads the author.
+
+Steps about install and codegen churn apply only to gates you ran locally.
+
 ## Fallback
 
 With no task runner and no CI, use the ecosystem default for the manifest you found — `cargo test`, `go test ./...`, `pytest`, `sbt test`, `mvn verify` — and say in the report which default you chose and why.

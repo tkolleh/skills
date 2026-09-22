@@ -51,19 +51,25 @@ Establish exactly what is under review and stop guessing about identity.
    wt list --format json            # recover the worktree path
    ```
    `--no-cd` because a shell's `cd` does not survive between tool calls. Take the path from `wt list` and target every later command at it explicitly — `git -C <path>`.
-3. **Refresh the base ref before computing anything.** A stale local base silently inflates a diff — one change in the source batch read as +767 lines when the true delta was +140.
+3. **Confirm the worktree is at the revision under review.** A supplied or reused worktree may sit behind the PR — the base can be fresh while the head is stale, and nothing in the diff announces it. Resolve the forge's head and compare:
+   ```bash
+   gh pr view <number> --json headRefOid --jq .headRefOid
+   git -C <worktree> rev-parse HEAD
+   ```
+   If they differ, stop and say so before computing any diff. Either advance the worktree, or review the forge head from object storage and materialise it for the search tools (see `references/semantic-search.md`). Report the commit you actually reviewed. In the test that produced this rule the supplied worktree was 21 commits and five review rounds behind; every core file had changed in the gap, and three findings would have described code that later commits already fixed.
+4. **Refresh the base ref before computing anything.** A stale local base silently inflates a diff — one change in the source batch read as +767 lines when the true delta was +140.
    ```bash
    git -C <worktree> fetch origin --prune
    git -C <worktree> diff --stat origin/<base>...<head>
    ```
    Report the true changed-line count; every later scope judgement rests on it.
-4. **Resolve the acting identity from the forge, not from git config.** `user.email` locally is frequently not the account that reviews. Filtering "PRs I have not reviewed" on the wrong identity marks everything unreviewed:
+5. **Resolve the acting identity from the forge, not from git config.** `user.email` locally is frequently not the account that reviews. Filtering "PRs I have not reviewed" on the wrong identity marks everything unreviewed:
    ```bash
    gh api user --jq .login
    ```
-5. **Filter a batch on objective criteria only** — open, not draft, no blocking label, within the stated window, not already reviewed by the identity from step 4. Never on how interesting a change looks. One worktree per PR, so a failed install cannot contaminate the next review.
+6. **Filter a batch on objective criteria only** — open, not draft, no blocking label, within the stated window, not already reviewed by the identity from step 5. Never on how interesting a change looks. One worktree per PR, so a failed install cannot contaminate the next review.
 
-Completion: you can state the target, its worktree path, its base, the true changed-line count, and the acting identity.
+Completion: you can state the target, its worktree path, its base, **the commit you actually reviewed and whether it matches the PR head**, the true changed-line count, and the acting identity.
 
 ---
 
@@ -99,13 +105,50 @@ If no gates are discoverable, say so plainly and mark the review as unverified-b
 
 You cannot judge whether code is correct until you know what it was meant to do.
 
-Read, in this order: the PR description; linked tickets and their **acceptance criteria**; commit messages; prior review threads — and specifically **which earlier concerns are still unaddressed at head**; and the repo's own standards (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/`). Project standards outrank your preferences; cite the file when you invoke one.
+Read, in this order: the PR description; linked tickets and their **acceptance criteria**; commit messages; prior review threads (the ledger, step below); and the repo's own standards (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `docs/`). Project standards outrank your preferences; cite the file when you invoke one.
+
+**Turn the repo's documented gotchas into checkable assertions.** A standards file is not only precedence for resolving conflicts you happen to notice — its gotchas, invariants, and "always/never" statements are findings the maintainers already wrote for you, pre-verified and citable. Reading them as background and moving on is how a change violates a rule the repo states in plain text.
+
+For each rule you find, write down the assertion and check it against the diff:
+
+| Doc says | Assertion | Checked how |
+|---|---|---|
+| "always wrap X in Y" | no changed call to X outside Y | structural sweep for X, inspect enclosing form |
+| "never call A from B" | no new A call inside B | structural sweep scoped to B |
+| "Z must run before W" | ordering holds on every changed path | read the changed path |
+
+Sweep structurally, per `references/semantic-search.md` — these assertions are shape claims and text search cannot settle them. A violation is a finding whose authority is the repo's own document: cite file and line, the way an acceptance criterion is cited. Rules the change does not touch go in the non-findings block as checked.
+
+Where the repo carries machine-checkable rules — `ast-grep` rule files, custom lint rules, CI policy checks — run them rather than re-deriving them by eye, and say which ran. A rule configured as non-blocking still reports; a warning the author did not see is still a finding.
 
 **Where the repo carries `.allium` specifications, they outrank the PR description.** A description is prose and can be wrong; the spec is the checked statement of intended behaviour. Run `allium check` to confirm the specs are sound, `allium model` for the domain vocabulary, and `allium plan` to derive the change's test obligations — an untested obligation is a testability finding with an authoritative source rather than an opinion. For spec-versus-code drift use the `weed` skill, and report which side moved rather than assuming it was the code.
 
 **State the premise the change rests on, then check it is still true.** One change in the source batch was blocked on an upstream dependency described as missing that had in fact landed nine days earlier — the repo had simply pinned an older tag. A stale premise invalidates the change and every review of it.
 
-Completion: you can state the intended behaviour in one sentence and list the acceptance criteria it must satisfy.
+### The prior-findings ledger
+
+On any change that has been reviewed before — by you, a colleague, or another agent — build a ledger before analysing. Long-lived branches accumulate rounds, and a fix that landed in round two can be undone in round four by a merge, a refactor, or a rename, with nothing in the diff announcing it.
+
+List every prior finding with the commit it was raised at, then resolve each against **head**, not against the reply that closed it:
+
+| Status | Meaning | Action |
+|---|---|---|
+| **Unaddressed** | never fixed | carry forward, note it has persisted N rounds |
+| **Addressed** | fixed and still holds at head | non-findings block, so the author sees it was re-checked |
+| **Regressed** | fixed, then undone | report — see below |
+| **Over-corrected** | fixed as asked, and the fix introduced a new defect | report at regression severity; name the origin thread and quote what was requested, so the author does not revert into the original bug |
+| **Refuted at head** | no longer holds because it was wrong, not because it was fixed | say so explicitly and show the evidence; otherwise the original reviewer re-raises it |
+| **Superseded** | the code it described is gone | say so; do not carry it |
+
+**A regression is worse than the original defect and is reported at higher severity.** Everyone believes it is fixed: the thread is resolved, the author has moved on, and the reviewer who confirmed the fix will not look again. Say explicitly that it was fixed and has come back, name the commit that fixed it and the one that undid it, and re-verify at head under the usual quote-or-drop rule.
+
+The same reasoning carries an **over-correction** — thread resolved, author moved on, requesting reviewer believes it landed — so it takes the same elevated severity. Do not file one as a regression: nothing was undone, and filing it that way points the author at a revert that reintroduces the original bug. Name the earlier request that produced it, quote what was asked for, and say how the fix must be *narrowed* rather than reversed.
+
+**Refutation belongs in the ledger too.** A prior finding that turns out to be wrong on the merits is a result worth recording, not a silence. Say so explicitly and show the evidence — otherwise the reviewer who raised it reads the omission as an oversight and raises it again next round.
+
+An author's reply is not evidence. "Done", a resolved thread, and a commit message naming the fix are all claims about an earlier revision. Verify at head.
+
+Completion: you can state the intended behaviour in one sentence, list the acceptance criteria it must satisfy, name the repo-documented rules the change is subject to, and give the status at head of every prior finding.
 
 ---
 
@@ -113,19 +156,25 @@ Completion: you can state the intended behaviour in one sentence and list the ac
 
 Work all seven pillars — correctness, maintainability, readability, efficiency, security, edge cases and error handling, testability — against the standard from Phase 0. Full checklist: `references/pillars.md`.
 
-**Search structurally, not textually.** Grep answers "where does this string appear"; review needs "what does this change reach", and text search answers that badly — it misses aliased imports, re-exports, and interface implementations. Use, in this order: **`ast-grep`** for structural patterns, **serena** for symbol-level questions the language server can answer, and plain text search only for things that genuinely are text. Never `sg` — it is deprecated.
+**Search structurally, not textually — this is a requirement, not a preference.** Grep answers "where does this string appear"; review needs "what does this change reach", and text search answers that badly — it misses aliased imports, re-exports, and interface implementations, and it cannot express a question about syntactic position or nesting at all. Use, in this order, descending only when the step above cannot express the query: **`ast-grep`** for structural patterns, **serena** for symbol-level questions the language server can answer, and plain text search only for things that genuinely are text. Invoke it as `ast-grep`, not `sg` — on some installations `sg` is a deprecated alias that warns instead of running. A language-specific skill's tool order wins for that language and is still structural-first.
 
-Three searches earn their cost on every review:
+Report which tool answered each sweep, and justify every fall-back to text search. It matters most where the sweep's value is proving *absence*: an empty grep result is not evidence, because grep's misses are invisible.
 
-- **Blast radius** — for each changed symbol, find its references and, for a changed interface, its implementations. Did every dependent get updated?
-- **Definitions** — jump to the definition of anything you intend to claim about. Reasoning from call sites is where false findings come from.
-- **Preference sweeps** — pattern-match the changed files for the things this codebase does not do: caller-owned mutation, loosened types, swallowed errors, duplicated logic.
+Five searches earn their cost on every review:
 
-Scope sweeps to the changed files and their dependents; repo-wide hits are pre-existing, not findings. Queries, traps, and the language-server caveats: `references/semantic-search.md`.
+- **Outbound blast radius** — for each changed symbol, find its references and, for a changed interface, its implementations. Did every dependent get updated?
+- **Inbound blast radius** — for each call the change adds, re-routes, or moves, open the **callee** and name the guarantee now being assumed: completion, durability, ordering, totality, atomicity. Does it provide it? The callee is usually unchanged, so no dependents sweep will surface it and it will not appear in the diff — these are PR-level findings and need the load-bearing clause.
+- **Definitions** — jump to the definition of anything you intend to claim about, including **generated and vendored code**. Reasoning from call sites is where false findings come from, and a generated type's real variants are where an exhaustive-looking match turns out not to be.
+- **Effect lifetime** — where the language has detachable effects or cancellation, sweep the changed paths for work that is started and abandoned, and for cancellation that reaches a side effect that must not be lost. Capability triage and the patterns: `references/pillars.md`.
+- **Preference sweeps** — pattern-match the changed files for the things this codebase does not do: caller-owned mutation, loosened types, swallowed errors, duplicated logic. Include the assertions extracted from the repo's own standards in Phase 3.
+
+Scope sweeps to the changed files, their dependents, and **the callees the change newly depends on**. Unrelated repo-wide hits are pre-existing, not findings. Queries, traps, and the language-server caveats: `references/semantic-search.md`.
 
 Check each acceptance criterion from Phase 3 against the code that implements it. A criterion no code satisfies is a finding regardless of whether the gates passed.
 
-**Green gates are not evidence of safety.** Ask whether a test exercises the changed path *for the right reason*. Two recurring cases: the test mocks the exact layer the change touched, and the build strips types instead of checking them.
+**Distinguish mechanism present from mechanism effective.** Confirming a value is threaded to the right call proves the plumbing is connected, not that the water arrives. Ask both, and state which you verified: is the call made on the path that needs it, *and* does the work it schedules run to completion with its outcome reaching whoever depends on it? Stopping at the first is the specific way a correct-looking diff fails to do what it promised. Capability triage — which of detachable effects, cancellation, error absorption, delivery semantics, and ordering this language actually has — is in `references/pillars.md`.
+
+**Green gates are not evidence of safety.** Ask whether a test exercises the changed path *for the right reason*. Three recurring cases: the test mocks the exact layer the change touched, the build strips types instead of checking them, and the test asserts the call happened rather than that its effect landed.
 
 ---
 
@@ -187,7 +236,13 @@ Two rules if you do: give each reviewer a **neutral** question, never a suspecte
 ## Anti-patterns
 
 - Reaching for text search before `ast-grep` and the semantic server, and missing an aliased or re-exported call site
+- Falling back to text search without saying so, or using it for a question about syntactic position or nesting that only a structural pattern can express
 - Trusting an empty `ast-grep` sweep, or any sweep over shell sources, as proof of absence
+- Checking only who depends on the change, never what the change now depends on
+- Stopping at "the value is threaded through" without checking the effect it schedules actually completes
+- Reading the repo's standards as background instead of extracting checkable assertions from them
+- Treating a resolved thread, a "done" reply, or a fix commit as proof a prior finding still holds at head
+- Refusing a finding solely because its line is outside the diff, when the change is what made that line decisive
 - Adopting an unrelated memory as a review preference because it ranked highly
 - Priming a reviewer with a suspected defect — biases toward confirming it
 - Running preflight in the user's checkout instead of a dedicated review worktree
