@@ -24,6 +24,23 @@ metadata:
 
 Review changes the way a defect costs real money: run the project's own gates before reading a line, quote the evidence for every claim, try to disprove your own findings, and say what you checked and found clean. A false finding costs more than a missed one. Optimise for precision. Work the phases in order.
 
+Copy this checklist into your working notes and check phases off as their completion criteria are met — every skipped phase in this skill's failure history was skipped silently, never decided against:
+
+```
+Review Progress:
+- [ ] 0 Standard   — baseline read; memory queried and gated
+- [ ] 1 Scope      — worktree resolved (dedicated, or the one exception verified);
+                     reviewed SHA == forge head; true changed-line count known
+- [ ] 2 Preflight  — gates discovered and run in the worktree; exit codes tabled; churn read
+- [ ] 3 Intent     — acceptance criteria + repo-rule assertions extracted; ledger built;
+                     open-thread count stated with confirmed/refuted/unverifiable split
+- [ ] 4 Analyse    — every changed file read whole at the pinned SHA; five sweeps run,
+                     tool named per sweep
+- [ ] 5 Verify     — every finding quoted, refutation attempted, probed where drivable
+- [ ] 6 Report     — findings by consequence; non-findings block; verdict preconditions met
+- [ ] 7 Publish    — only on explicit request, verified server-side after posting
+```
+
 ---
 
 ## Phase 0 — Load the reviewer's standard
@@ -339,6 +356,8 @@ After posting, **verify server-side**. The transcript is not evidence: a body ca
 The default path is a single reviewer and uses no agent tooling. Only when the user explicitly asks for a batch or a multi-lens review, fan out one reviewer per change or per pillar.
 
 Two rules if you do: give each reviewer a **neutral** question, never a suspected defect stated as fact — priming produces confirmation; and instruct each to treat a refutation as a successful result rather than a failure to find something. Merge findings only after each has passed Phase 5 independently.
+
+**Agreement between reviewers is not evidence.** Never promote, upgrade, or retain a finding because several reviewers converged on it — panels of dozens of agents, adversarial ones included, have unanimously endorsed defects that did not exist. The only things that promote a finding are a quote from the reviewed revision, a failing gate, or an executed probe. A finding every reviewer raised and none could evidence is dropped exactly like a finding one reviewer raised and could not evidence.
 
 ---
 
