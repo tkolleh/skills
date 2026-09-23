@@ -45,12 +45,29 @@ If memory is unavailable, proceed on the baseline and say that you did.
 Establish exactly what is under review and stop guessing about identity.
 
 1. **Target** — a PR number or URL, a branch, a commit range, or the working tree. Ask if ambiguous; do not assume the current diff.
-2. **Isolate the change in its own worktree before touching anything** — preflight installs and codegen must never churn files the user is editing. `wt` ([worktrunk](https://worktrunk.dev)) resolves a PR in one step:
+2. **Every review runs in a dedicated review worktree, with exactly one exception.** Preflight installs and codegen must never churn files the user is editing, and every file you read must be at the revision under review — a separate worktree buys both. The one exception: the directory the review was invoked from is already a checkout of the PR's branch, **at the PR's head, with a clean tree**. Check all three before claiming it:
    ```bash
-   wt switch pr:<number> --no-cd    # GitHub; mr:<number> GitLab; or a branch name
-   wt list --format json            # recover the worktree path
+   git -C <invocation-dir> branch --show-current      # must equal the PR's headRefName
+   git -C <invocation-dir> rev-parse HEAD             # must equal headRefOid from the forge
+   git -C <invocation-dir> status --porcelain         # must be empty
    ```
-   `--no-cd` because a shell's `cd` does not survive between tool calls. Take the path from `wt list` and target every later command at it explicitly — `git -C <path>`.
+   Branch name alone is not enough — a checkout on the right branch but behind the head, or carrying uncommitted edits, reviews a revision that is not the PR. If any check fails, fall through to a separate worktree; never advance or clean the user's checkout to make it qualify.
+
+   **Creating the review worktree.** First resolve a local repo for the PR: the invocation directory if it is a clone of the PR's repo, else a known local clone, else a fresh clone into scratch space. Then:
+   - Where `wt` ([worktrunk](https://worktrunk.dev)) manages that repo **and no existing worktree already holds the PR's branch**, it resolves a PR in one step:
+     ```bash
+     wt switch pr:<number> --no-cd    # GitHub; mr:<number> GitLab; or a branch name
+     wt list --format json            # recover the worktree path
+     ```
+     `--no-cd` because a shell's `cd` does not survive between tool calls.
+   - **If any worktree already holds the PR's branch, do not commandeer it — it is someone's working copy.** `wt switch` and `git worktree add <branch>` both route to or collide with that checkout, which may be stale and may carry uncommitted work. In the run that produced this rule, the author's `FRD-8171` worktree sat one commit behind the forge head at review time. Create a detached review worktree pinned at the exact head instead:
+     ```bash
+     git -C <repo> fetch origin <base> 'refs/pull/<number>/head' --prune   # GitHub; GitLab: refs/merge-requests/<number>/head
+     git -C <repo> worktree add --detach <repo>/../<name>.review-pr<number> <headRefOid>
+     ```
+     Detached-at-SHA also removes a whole class of stale-head errors: the worktree cannot silently drift, and step 3's head check passes by construction.
+
+   **Review the source in that worktree and nowhere else.** Every later command — diffs, file reads, structural sweeps, preflight gates — targets the worktree path explicitly (`git -C <path>`, absolute paths for readers and search tools). A file read from the invocation directory, an editor buffer, or another checkout is a different revision wearing the same name.
 3. **Confirm the worktree is at the revision under review.** A supplied or reused worktree may sit behind the PR — the base can be fresh while the head is stale, and nothing in the diff announces it. Resolve the forge's head and compare:
    ```bash
    gh pr view <number> --json headRefOid --jq .headRefOid
@@ -341,10 +358,14 @@ Two rules if you do: give each reviewer a **neutral** question, never a suspecte
 - Stating a verdict — approving, or saying it looks safe to merge — while another reviewer's thread is unresolved and unexamined
 - Treating many prior review rounds as evidence of convergence rather than as a reason to check head harder
 - Offering a fix snippet precise enough to be pasted verbatim, without having compiled or tested it
+- Piping an empirical probe into a build tool's interactive REPL and reading its silent no-op as a clean run, instead of a scratch test under the project's own runner
+- Leaving probe scaffolding behind in the review worktree after the table is captured
 - Refusing a finding solely because its line is outside the diff, when the change is what made that line decisive
 - Adopting an unrelated memory as a review preference because it ranked highly
 - Priming a reviewer with a suspected defect — biases toward confirming it
 - Running preflight in the user's checkout instead of a dedicated review worktree
+- Reviewing in the invocation directory on branch-name match alone, without confirming it sits at the PR head with a clean tree
+- Commandeering an existing worktree that holds the PR's branch — someone's working copy — instead of creating a detached review worktree at the head SHA
 - Relying on `cd` persisting between commands instead of passing the worktree path explicitly
 - Discarding preflight churn without reading it, or forcing a worktree removal to get past it
 - Reviewing against a stale base ref, inflating the diff
