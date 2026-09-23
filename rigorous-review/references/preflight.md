@@ -41,7 +41,15 @@ If CI already ran on the reviewed SHA, read those results first. They are strong
 gh api repos/<owner>/<repo>/commits/<sha>/status
 ```
 
-Run gates locally only for what CI did not cover, or when no CI result exists for this exact SHA. Record in the preflight table which source each row came from, and separate code gates from process gates — an approval-count or policy check is red for reasons that have nothing to do with the code, and reporting it as a failing gate misleads the author.
+**Read it even when you are told the gates pass — especially then.** "CI is green" is a claim about some commit, often an earlier one, and it is the cheapest claim in the review to check: one call, no worktree, no toolchain. In the test that produced this rule the reviewer was told the gates all passed and reviewed on that basis; the commit's actual status was `failure` with four red checks. A premise that costs one API call to verify is never worth accepting on trust, and a reviewer who repeats it inherits it.
+
+**A green check is a claim, and some checks report success without having run.** Read the state of every check, not just the aggregate, and ask of each one whether it actually executed on *this* SHA:
+
+- **Pending is not passing.** A check that never reported looks like absence, not failure, and disappears into an aggregate. At the commit that produced this rule the unit and integration suites — the only gates that exercise the changed code — sat `pending` and never reported, while the reviewer had been told the gates passed.
+- **A bot's status can outlive the bot.** An automated reviewer that stopped running may still post `success` with a description like "Review completed". Verified on that same commit: a review bot's check read `"Review completed" — success` on a head it had not reviewed, because it auto-paused rounds earlier. Corroborate a review bot's check against its actual comments on recent commits before reading its silence as approval.
+- **Separate code gates from process gates.** Approval counts, ownership, and policy checks are red for reasons unrelated to the code; reporting them as failing gates misleads the author, and letting them crowd out a genuinely red build misleads them worse.
+
+Run gates locally only for what CI did not cover, or when no CI result exists for this exact SHA. Record in the preflight table which source each row came from.
 
 Steps about install and codegen churn apply only to gates you ran locally.
 

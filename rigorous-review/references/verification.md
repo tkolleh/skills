@@ -47,8 +47,20 @@ How to do it:
 
 1. Isolate the smallest unit that carries the behaviour — the exported function, the reducer, the predicate.
 2. Take it **as shipped**, at the reviewed revision. Do not retype it; a transcription that fixes the bug proves nothing.
+
+   When the unit has to be lifted into a harness — a different language, a standalone runner, an extracted function — **prove the harness is faithful before you trust a single result from it.** The repo's own test suite is the instrument: run the existing assertions for that unit through your harness and confirm they all still pass. In the run that produced this rule, a reviewer transcribed a Scala sanitiser into a Java harness and validated it by running the PR's own 93 spec assertions through it — 93 passed, 0 failed — before reporting anything. That converts every later result from "my copy behaves this way" into "the shipped code behaves this way." Without it, a transcription slip is indistinguishable from a defect, and it will be the author's first explanation.
 3. Drive it with fixtures drawn from the real domain — values from tests, seed data, or the ticket's acceptance criteria. Invented inputs invite "that would never happen."
-4. Report the input → output table, not your interpretation of it.
+4. **Include control rows.** Alongside each input you claim is mishandled, drive a sibling you expect to be handled *correctly*, and label it. Without controls an unchanged output is ambiguous — it reads equally as a real defect or as a harness you wired up wrong, and the author will reach for the second reading first.
+
+   ```
+   input                             output              result
+   SSN: 123456789                    SSN:  **            modified   <- control
+   SSN = 123456789                   SSN = 123456789     UNCHANGED  <- finding
+   ```
+
+   The control redacting is what makes the finding unarguable: the harness demonstrably works, and the only thing that changed is the input.
+
+5. Report the input → output table, not your interpretation of it.
 
 Do not fabricate a table you did not produce. Where you cannot execute, say so and mark the finding `Plausible`.
 
@@ -57,7 +69,7 @@ Do not fabricate a table you did not produce. Where you cannot execute, say so a
 Check every candidate finding against this list before it goes in the report. Anything matching is dropped or moved to non-findings.
 
 - **Pre-existing** — the problem is on a line the change did not touch, *and* the change does not make it decisive. Real, but not this PR's. Before dropping on this rule, test it: can you write the load-bearing clause from `references/finding-schema.md` — newly reached, newly load-bearing, or newly frequent? If you can, the line is unchanged but the finding is this PR's, and it reports as PR-level. If you cannot, drop it. The rule exists to stop wishlists riding along on someone else's change, not to protect a change from the consequences of what it now depends on.
-- **Compiler-catchable** — type errors, missing imports, formatting, unused symbols. The toolchain reports these better than you do; preflight already ran them.
+- **Compiler-catchable** — type errors, missing imports, formatting, unused symbols. The toolchain reports these better than you do; preflight already ran them. **This rule assumes a toolchain that will actually tell the author.** Before dropping on it, check that one exists and runs: a dynamic language has no compile step that catches an undefined name, and a repo with no CI has nothing that would surface it. Where preflight is something *you* had to construct, the toolchain is not reporting this — you are — so the finding stands. It also stands when the defect masks another: a test that dies on `NameError` never evaluates its assertion, so the wrong return value underneath it goes unseen.
 - **Intentional** — the change in behaviour is the point of the PR, or is stated in the description or a linked ticket.
 - **Explicitly silenced** — a suppression comment with a stated reason. Question a *missing* reason, not the suppression.
 - **Unreachable** — a guard upstream makes the input impossible. Verify the guard; do not assume it.

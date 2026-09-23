@@ -27,6 +27,26 @@ The posted text is read by a colleague, not by you.
 
 Drop borderline items rather than padding the review. A short review that is entirely load-bearing gets acted on; a long one gets skimmed.
 
+## Enterprise forges — read this before any `gh` call
+
+On a GitHub Enterprise host, **every** `gh` invocation needs a literal `GH_HOST=<host>` prefix — reads during the Phase 3 ledger as much as writes here:
+
+```bash
+GH_HOST=git.example-corp.com gh api repos/{owner}/{repo}/pulls/{n}/comments --jq length
+```
+
+Three traps, each of which has cost a review:
+
+- **A missing `GH_HOST` returns `404`, not an empty list.** Read as "no prior comments", it turns a PR with 69 inline comments into one that appears never reviewed. Treat a 404 on a PR you know exists as an unresolved host problem, never as an absence of data — the same rule the skill applies to an empty `ast-grep` sweep.
+- **`gh pr view` rejects `--hostname`** (`unknown flag`), while `gh api` accepts it. The `GH_HOST=` prefix works for both, so use it uniformly rather than remembering which is which.
+- **Some environments hook `gh` and block shell substitution.** Where a guard rejects `$(...)` or `$VAR` inside a `gh` command, resolve the SHA and repo slug in a prior call and paste the literals in.
+
+Confirm the host from the remote before the first call:
+
+```bash
+git -C <worktree> remote get-url origin
+```
+
 ## Posting with `gh`
 
 Build the payload as a file rather than inline, so quoting and newlines survive:

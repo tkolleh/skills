@@ -12,7 +12,7 @@ description: >
   commit messages, for CI failure triage, or for reviewing your own
   work-in-progress before it is ready.
 license: MIT
-compatibility: "Requires git; wt (worktrunk) for review worktrees; ast-grep and a semantic code-intelligence MCP server (serena) for structural search; a memory backend (serena memories, openmemory) for reviewer preferences; allium for specification-backed intent; and the project's own test/lint/typecheck tooling. Optional: gh (Phase 7 publish), hunk plus its bundled hunk-review skill (inline placement in a live diff review)."
+compatibility: "Requires git; gh with REST and GraphQL access to the forge (Phase 3 prior-findings ledger — GraphQL is required for thread resolved-state, and an enterprise host needs a literal GH_HOST prefix on every call); wt (worktrunk) for review worktrees; ast-grep and a semantic code-intelligence MCP server (serena) for structural search; a memory backend (serena memories, openmemory) for reviewer preferences; allium for specification-backed intent; and the project's own test/lint/typecheck tooling. Optional: hunk plus its bundled hunk-review skill (inline placement in a live diff review)."
 metadata:
   audience: developers
   workflow: code-review
@@ -57,12 +57,14 @@ Establish exactly what is under review and stop guessing about identity.
    git -C <worktree> rev-parse HEAD
    ```
    If they differ, stop and say so before computing any diff. Either advance the worktree, or review the forge head from object storage and materialise it for the search tools (see `references/semantic-search.md`). Report the commit you actually reviewed. In the test that produced this rule the supplied worktree was 21 commits and five review rounds behind; every core file had changed in the gap, and three findings would have described code that later commits already fixed.
-4. **Refresh the base ref before computing anything.** A stale local base silently inflates a diff — one change in the source batch read as +767 lines when the true delta was +140.
+4. **Refresh the base ref before computing anything, and pass `--no-ext-diff`.** A stale local base silently inflates a diff — one change in the source batch read as +767 lines when the true delta was +140.
    ```bash
    git -C <worktree> fetch origin --prune
-   git -C <worktree> diff --stat origin/<base>...<head>
+   git -C <worktree> diff --no-ext-diff --stat origin/<base>...<head>
    ```
-   Report the true changed-line count; every later scope judgement rests on it.
+   `--no-ext-diff` is a flag on `diff`, so it goes **after** the subcommand — `git -C <path> --no-ext-diff diff` fails with `unknown option`. Pass it on every diff you read.
+
+   It is needed because a user's global `diff.external` (difftastic, delta, and friends) replaces unified diff output with a side-by-side render that has **no `+`/`-` markers at all** — added lines become indistinguishable from context, and nothing announces the substitution. It is configured globally on many developer machines, so the failure follows you into every repo. A review built on that output is guessing which lines are new; that is the one input the whole review rests on. Report the true changed-line count.
 5. **Resolve the acting identity from the forge, not from git config.** `user.email` locally is frequently not the account that reviews. Filtering "PRs I have not reviewed" on the wrong identity marks everything unreviewed:
    ```bash
    gh api user --jq .login
@@ -129,7 +131,22 @@ Where the repo carries machine-checkable rules — `ast-grep` rule files, custom
 
 On any change that has been reviewed before — by you, a colleague, or another agent — build a ledger before analysing. Long-lived branches accumulate rounds, and a fix that landed in round two can be undone in round four by a merge, a refactor, or a rename, with nothing in the diff announcing it.
 
-List every prior finding with the commit it was raised at, then resolve each against **head**, not against the reply that closed it:
+**Fetch the threads before you read the diff. This is a command, not a reading habit.** Enumerate them; do not sample the ones the diff reminds you of. A review that states a merge position without this step is not a rigorous review — see the open-threads gate below.
+
+**No single call returns the prior findings.** A PR stores review prose in three collections that do not overlap, and the one most reviewers reach for is the one most likely to be empty. `gh pr view --json reviews` returns only top-level summary bodies — it silently omits every inline comment, which is where findings actually live. On the PR behind the gate below, 30 of 44 review bodies were empty and **zero** findings appeared in them, while 27 sat in the inline comments. It succeeds, returns well-formed JSON, and shows nothing: a silent partial success, more dangerous than an error because a 404 makes you look again and a stub body does not.
+
+Query all three — inline comments, review bodies, issue-level discussion — plus the GraphQL thread query that carries `isResolved`, which REST does not expose at all. `--paginate` every one; the default page of 30 dropped 57% of that PR's history with no signal. On an enterprise forge each call needs a literal `GH_HOST=<host>` prefix, or `gh api` returns **404, not an empty list**.
+
+**Commands, the three-collection table, the pagination reconciliation, and the failure modes each source has: `references/ledger.md`. Read it before building the ledger.**
+
+Three properties of the data shape how you must handle it:
+
+- **Key the ledger on thread identity** — the root comment's `databaseId` — never on a line. An outdated thread reports `line: null`, so line-keyed merging drops exactly the threads that have survived the most rounds.
+- **Two threads on the same line are usually two defects.** Co-location is not duplication; collapsing them hides a live defect behind a fix that looks complete.
+- **`resolved=false, outdated=true` is the dangerous quadrant**, not a stale one: a finding the author replied "Done" to but never resolved, on code that has since moved. It is still open.
+
+
+Then resolve each against **head**, not against the reply that closed it:
 
 | Status | Meaning | Action |
 |---|---|---|
@@ -148,13 +165,72 @@ The same reasoning carries an **over-correction** — thread resolved, author mo
 
 An author's reply is not evidence. "Done", a resolved thread, and a commit message naming the fix are all claims about an earlier revision. Verify at head.
 
-Completion: you can state the intended behaviour in one sentence, list the acceptance criteria it must satisfy, name the repo-documented rules the change is subject to, and give the status at head of every prior finding.
+### The open-threads gate
+
+**Another reviewer's unresolved finding is a blocking input to your verdict, not context you may skim.** Before stating any merge position — and *especially* before anything that reads as approval — every thread with `isResolved=false` must be accounted for, by name, with a status at head.
+
+Account for each one in one of three ways. Silence is the one option that misleads, because the author cannot distinguish it from agreement:
+
+| | What you must show |
+|---|---|
+| **Confirmed** | it reproduces at head — quote the evidence, carry it into your report at its own severity |
+| **Refuted** | it does not hold at head — show why, per Phase 5 rule 2 |
+| **Unverifiable** | you could not settle it — say so, and say what blocked you |
+
+Then state the count explicitly: *"N threads open at head; C confirmed, R refuted, U unverifiable."* A review that cannot produce that line has not finished Phase 3.
+
+**Unverifiable is an honest answer and it absorbs scale.** A long-running branch can carry dozens of unresolved-but-outdated threads written against code that has since been rewritten. Settling each one needs the original reviewer's intent, not just the diff, and "the code moved" is not the same as "the finding was answered" — so classify them as unverifiable in a batch and say why, rather than either inventing resolutions or letting the count stop you reviewing. Spend the individual effort on the threads still anchored to current lines; those are the ones the author can act on today.
+
+Before setting the batch aside, read it once for **structural claims that outlive the code they were filed against** — an argument about irreversibility, ordering, or a durability guarantee often still holds after the function it described was rewritten, and it frequently sets the severity of what you found yourself.
+
+The forge also carries a one-field summary of where review stands. It is not a substitute for the thread list, but disagreeing with it silently is a mistake worth catching early:
+
+```bash
+GH_HOST=<forge-host> gh api graphql -f query='
+{ repository(owner:"<owner>", name:"<repo>") {
+    pullRequest(number:<n>) { reviewDecision } } }' --jq '.data.repository.pullRequest.reviewDecision'
+```
+
+**Approving over an unresolved thread you have not addressed is the failure this gate exists to prevent.** Not because the other reviewer is right — they may well be wrong, and refuting them is a first-class outcome — but because an approval is read as a judgement on everything open at that commit. Approving without looking tells the author a finding was weighed when it was not, and it retires a thread that no one will reopen.
+
+This rule exists because of a specific failure. On a 29-commit, 9-round PII-redaction PR, a review using this skill approved at head `<sha>` and retracted ten minutes later. At that commit **27 of 41 threads were `isResolved=false`** — seven of them still anchored to current lines, the rest unresolved and outdated — and the approval had engaged with none of them. All seven anchored findings then proved real on execution: SSNs and dates of birth leaking unredacted to an analytics topic, and ordinary audit text irreversibly corrupted at a sanitizer that never retains the original.
+
+The analysis was never the weak point — the same skill confirmed four of them against the regex source within minutes of finally looking. It approved because nothing made it look first. One GraphQL query would have caught every one.
+
+Two aggravating patterns to recognise in yourself, both present in that review:
+
+- **The nit at the verdict.** The approval's one substantive remark was that the PR description was stale. When the most severe thing you have to say at approval time is a documentation nit, that is not a clean PR — it is an unread thread list.
+- **Rounds as reassurance.** Nine rounds of fixes read as evidence of convergence. On a change of this shape they are the opposite: each round narrowed a regex and opened a new gap, which is why round nine still leaked. Prior review effort is not a substitute for checking head, and a long fix history is a reason to check harder.
+
+Completion: you can state the intended behaviour in one sentence, list the acceptance criteria it must satisfy, name the repo-documented rules the change is subject to, give the status at head of every prior finding, and state the open-thread count with its confirmed/refuted/unverifiable split.
 
 ---
 
 ## Phase 4 — Analyse
 
 Work all seven pillars — correctness, maintainability, readability, efficiency, security, edge cases and error handling, testability — against the standard from Phase 0. Full checklist: `references/pillars.md`.
+
+**Read the whole source file before analysing it. The diff is a pointer to where to look, never the thing you review.** Open every changed file in full, at the exact revision under review, and read the code the changed lines sit inside — the enclosing function, its callers in that file, the constructor or factory the type flows through, the invariants declared at the top. A hunk shows you what moved; it cannot show you what the moved code now means.
+
+This is not the same claim as the PR-level finding rule in `references/finding-schema.md`. That rule says an out-of-diff *line* may be reported when the change made it decisive. This says you cannot know whether it did without having read it. The rule presupposes the reading.
+
+The cost of skipping it is not a missed nit. On the PR behind Phase 3's gate, the diff showed a scrubber being wired into a pipeline — routine, and it reads as an improvement. What made two of those findings **Critical rather than High** sat ~120 lines above the diff, untouched:
+
+```scala
+object AuditActionReason {
+  def apply(value: String): AuditActionReason = new AuditActionReason(sanitizePII(value))
+}
+```
+
+A private constructor and a single factory that sanitises on the way in and retains nothing. That one fact converts "this regex over-redacts" into "this irreversibly destroys audit records", and no amount of staring at the diff would surface it.
+
+Three specific traps, all of which look like a clean review from inside the hunk:
+
+- **Reviewing the wrong revision.** Pin the SHA explicitly and read the file at it — `git -C <worktree> show <sha>:<path>`, or fetch from object storage when you have no worktree (`references/semantic-search.md`). A file read from a branch name, from a stale worktree, or from your editor's buffer is a different file, and nothing in the text says so.
+- **Reviewing the wrong file.** A generated, vendored, or re-exported symbol has a real definition elsewhere; the diff names the path it was edited at, not the path that defines behaviour.
+- **Reading only the changed files.** The callee a change newly depends on is usually unchanged, so it appears in no diff — which is exactly why the inbound-blast-radius sweep below exists.
+
+When a file is genuinely too large to read whole, say so and name what you read instead — the enclosing type, the call graph around the change. An unread region you do not declare reads to the author as a region you checked.
 
 **Search structurally, not textually — this is a requirement, not a preference.** Grep answers "where does this string appear"; review needs "what does this change reach", and text search answers that badly — it misses aliased imports, re-exports, and interface implementations, and it cannot express a question about syntactic position or nesting at all. Use, in this order, descending only when the step above cannot express the query: **`ast-grep`** for structural patterns, **serena** for symbol-level questions the language server can answer, and plain text search only for things that genuinely are text. Invoke it as `ast-grep`, not `sg` — on some installations `sg` is a deprecated alias that warns instead of running. A language-specific skill's tool order wins for that language and is still structural-first.
 
@@ -175,6 +251,8 @@ Check each acceptance criterion from Phase 3 against the code that implements it
 **Distinguish mechanism present from mechanism effective.** Confirming a value is threaded to the right call proves the plumbing is connected, not that the water arrives. Ask both, and state which you verified: is the call made on the path that needs it, *and* does the work it schedules run to completion with its outcome reaching whoever depends on it? Stopping at the first is the specific way a correct-looking diff fails to do what it promised. Capability triage — which of detachable effects, cancellation, error absorption, delivery semantics, and ordering this language actually has — is in `references/pillars.md`.
 
 **Green gates are not evidence of safety.** Ask whether a test exercises the changed path *for the right reason*. Three recurring cases: the test mocks the exact layer the change touched, the build strips types instead of checking them, and the test asserts the call happened rather than that its effect landed.
+
+Completion: you can name every file you read in full and the revision you read it at, name any file you could not read whole and what you read instead, and say which tool answered each of the five sweeps.
 
 ---
 
@@ -203,6 +281,20 @@ Order findings by severity, and severity by consequence — silent wrong answers
 **End every review with the non-findings block, including reviews with zero findings.** Name each pillar you checked and how you know it is clean. Without it the author cannot tell "checked" from "skipped", and must re-review the change themselves — which is the entire cost the review existed to remove. If a pillar could not be checked, say that and say why.
 
 If the runtime provides a structured findings tool, emit through it *instead of* prose, not in addition. Field mapping is in `references/finding-schema.md`.
+
+### Stating a verdict
+
+A verdict is a claim about the whole change, so it carries the whole review's evidence. This applies wherever the verdict appears — a posted `APPROVE`, or a sentence in chat saying the change looks safe to merge. Users act on the sentence exactly as they would on the button.
+
+Before writing one, state these three lines. If you cannot, you do not have a verdict yet, and saying so is the honest output:
+
+1. **Gates** — every preflight command and its exit code.
+2. **Open threads** — the count from the Phase 3 gate, with its confirmed/refuted/unverifiable split, and each confirmed one named.
+3. **Head** — the commit you reviewed, and that it matches the forge head now. A verdict on a superseded commit is worse than none; re-check at the moment you state it, since the author may have pushed while you were reading.
+
+**Never volunteer approval.** Report findings and let the user decide. The strongest thing to offer unasked is "no findings survived verification at `<sha>`", which is a statement about your review rather than a judgement on the change — and it is only available when the open-thread count is zero or every open thread is accounted for.
+
+Stating "looks good to merge" while another reviewer's finding sits unresolved and unexamined is the failure documented in Phase 3. If you are going to disagree with an open finding, disagree with it explicitly and show the refutation — never by omission.
 
 ### Inline placement in a live diff review (optional)
 
@@ -242,6 +334,13 @@ Two rules if you do: give each reviewer a **neutral** question, never a suspecte
 - Stopping at "the value is threaded through" without checking the effect it schedules actually completes
 - Reading the repo's standards as background instead of extracting checkable assertions from them
 - Treating a resolved thread, a "done" reply, or a fix commit as proof a prior finding still holds at head
+- Reading prior review prose from `gh pr view --json reviews` alone, and taking a stub summary body as proof the review was empty
+- Fetching review data without `--paginate`, and reading the first 30 of 69 comments as the whole history
+- Letting a missing `GH_HOST` 404 stand in for "this PR has no prior comments"
+- Keying a findings ledger on line numbers, so outdated threads reporting `line: null` drop out silently
+- Stating a verdict — approving, or saying it looks safe to merge — while another reviewer's thread is unresolved and unexamined
+- Treating many prior review rounds as evidence of convergence rather than as a reason to check head harder
+- Offering a fix snippet precise enough to be pasted verbatim, without having compiled or tested it
 - Refusing a finding solely because its line is outside the diff, when the change is what made that line decisive
 - Adopting an unrelated memory as a review preference because it ranked highly
 - Priming a reviewer with a suspected defect — biases toward confirming it
@@ -250,9 +349,14 @@ Two rules if you do: give each reviewer a **neutral** question, never a suspecte
 - Discarding preflight churn without reading it, or forcing a worktree removal to get past it
 - Reviewing against a stale base ref, inflating the diff
 - Treating green CI as proof the changed path is safe
+- Accepting "the gates pass" from the requester without reading the commit's actual status, when one API call settles it
+- Reading a pending check as a passing one, or a review bot's green status as evidence it actually reviewed this commit
 - Hardcoding one project's verification command instead of discovering it
 - Reporting a finding without quoted evidence, or without a stated consequence
 - Reviewing lines the change did not touch
+- Reviewing the diff hunks instead of the source file they sit in, so the context that sets severity is never read
+- Reading a changed file from a branch name, a stale worktree, or an editor buffer rather than at the pinned revision under review
+- Leaving part of a file unread without saying so, which the author reads as checked
 - Posting without reading the result back from the API
 - Reloading or navigating a live diff session the user is reading, to make a finding fit
 - Treating inline notes as a substitute for the report, or submitting a comment batch without checking each finding anchors inside the loaded review
