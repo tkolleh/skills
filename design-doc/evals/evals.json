@@ -18,6 +18,12 @@
       "prompt": "I'm about to start building a new `calculateShippingCost` function and I want to do this properly with TDD -- write the failing test first, then the minimal implementation, then refactor. Can you help me pair on this?",
       "expected_output": "The agent should NOT invoke the design-doc/collaborative-tdd skill. This is a request for Test-Driven Development (the coding practice: red-green-refactor), not a Technical Design Document. The agent should recognize the ambiguity and either directly help with TDD-the-practice (write a failing test, minimal implementation, refactor) or explicitly clarify which 'TDD' the user means, but should not launch into the Technical-Design-Document state machine (asking about NFRs, ADRs, rollout plans, etc.) for what is clearly a request to pair-program a single function using red-green-refactor.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We're adding a new gRPC endpoint `GetLoyaltyBalance` on our rewards-service so that the mobile-checkout-service (a different team's service that's never called us before) can look up a customer's loyalty point balance at checkout. Can you write a TDD for this?",
+      "expected_output": "The agent should move through States 1-2 first (constraint questions, then the consequential trade-off if any) rather than jumping straight to contracts. When it reaches State 3 (Interface & Contract Definition), because this introduces a new interface consumed by a new caller, it must produce BOTH: (a) a literal contract snippet for GetLoyaltyBalance in a real IDL/schema format (e.g. protobuf/gRPC service definition), and (b) an explicit scope/permission table or row identifying the exact scope or permission string mobile-checkout-service would need to call rewards-service, whether that scope is new or already granted, and who owns/grants it. If the agent cannot derive the real scope string or granting process from context, it must ask the user directly rather than inventing a plausible-sounding scope name. The final synthesized document (if reached) must NOT contain an ADR/MADR-style 'Status: Accepted / Alternatives Considered / Consequences' block anywhere -- trade-off reasoning should read as prose inside Design Overview or Detailed Design, and the interface/scope material should appear under an 'Interface Contracts & Security Scopes' heading (or equivalent), not buried in generic prose.",
+      "files": []
     }
   ]
 }
