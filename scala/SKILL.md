@@ -1,12 +1,10 @@
 ---
 name: scala
-description: "Enforces required tool order for Scala/Java projects. Compile/test: use the sbt server directly (a warm, long-running `sbt` shell session, or sbt's own BSP interface with `defaultBspToBuildTool = true`) — never Bloop, in any form, as the CLI or as the BSP backend. Search/navigate: scalex first, then ast-grep, then a semantic/LSP-aware tool if one is available, then grep/ripgrep as last resort — this order is unconditional, even for single-file lookups. Trigger on: \"compile this\", \"run the tests\", \"sbt compile\", \"sbt test\", \"build the project\", \"find where X is defined\", \"who implements this trait\", \"find usages of\", \"search this Scala codebase\", or any Scala/Java compile, test, or code-search request."
+description: "Use whenever reading, writing, reviewing, or navigating Scala or Java code, or working anywhere in a Scala/Java project (build.sbt, *.scala, *.java files, sbt/Bloop/BSP setup). Enforces preferred tool order for code search and compile/test, plus house style for collections, sbt workflow, and returns."
 license: MIT
-compatibility: opencode
 metadata:
-  audience: developers
   workflow: scala-tooling
-  tags: "scala, java, sbt, scalex, ast-grep, code-search, compile, test"
+  tags: "scala, java, sbt, scalex, ast-grep, code-search, compile, test, style"
   tools: "sbt, scalex, ast-grep, grep"
 ---
 
@@ -18,8 +16,8 @@ semantically blind compared to Scala-aware tools and usage patterns that already
 environment. Following the generic default "because it's obvious" silently produces slower
 feedback loops or missed call sites — this skill exists so that doesn't happen by default.
 
-1. **Compilation and testing MUST go through a warm sbt server, never Bloop — not the `bloop`
-   CLI, and not Bloop acting as the BSP backend.**
+1. **Compile and test through the build tool's own BSP server — prefer it over defaulting to
+   Bloop.**
 2. **Code search/navigation MUST follow this fallback order: scalex → ast-grep → semantic/LSP tool
    (if available) → grep.** This order is unconditional — it applies even when you already know
    which file to look in.
@@ -29,23 +27,11 @@ pattern-matching CLI, an optional semantic/LSP layer) rather than assuming one s
 plugin or MCP ecosystem. Use whichever concrete tool your environment provides for each role —
 see the invocation notes under each tool below for how that resolves in Claude Code specifically.
 
-## Compile and test: sbt server, always — never Bloop in any form
+## Compile and test: prefer the build tool's BSP server over Bloop
 
-Use a long-running `sbt` shell session for `compile` and `test`. If your editor/agent integration
-drives BSP instead, it must talk to **sbt's own BSP server**, not Bloop's. Do **not** shell out to
-the `bloop` CLI, and do **not** enable, install, or rely on a Bloop build server for this project
-— including as a BSP backend selected implicitly because it happened to be running. This is
-unconditional: there is no case where falling back to Bloop is acceptable.
-
-**Why:** Bloop compiles *files*, not sbt *tasks* — it silently misses anything produced by an
-sbt task override (generated sources, sbt-plugin-driven codegen) because it never runs the task
-that would produce them. It also runs as a single daemon shared across the whole machine, whose
-JVM flags and version are fixed by whichever client starts it first and silently ignored
-thereafter for everyone else — across multiple worktrees this produces cross-branch cache
-contention and hard-to-diagnose OOMs that present as "not enough heap." None of that exists with
-the sbt server: staying inside one warm `sbt` shell session (rather than invoking `sbt <task>`
-fresh from the command line each time) avoids sbt's own JVM-startup and build-graph-reload cost,
-which is the actual source of "cold sbt is slow" — not a reason to reach for Bloop.
+Use a long-running `sbt` shell session (or `sbt --client`) for `compile` and `test`. Prefer the
+build tool's own BSP server over defaulting to Bloop — if your editor/agent integration drives
+BSP, point it at sbt's BSP server rather than letting it fall back to Bloop.
 
 **Precondition — check before running anything:**
 
@@ -54,19 +40,6 @@ which sbt
 ```
 
 If this returns nothing, **stop and report it** rather than guessing at an install path.
-
-**How to stay warm:** open one `sbt` shell per project/worktree and issue `compile`/`test`/
-`testOnly` inside it, rather than invoking `sbt compile` etc. as a new process each time.
-
-**If your agent or editor integration talks BSP:** it must be configured with
-`defaultBspToBuildTool = true` (or the equivalent setting for your client) so that BSP requests
-route to sbt's own BSP server, not Bloop's. Verify this setting rather than assuming it — a client
-that falls back to Bloop when this is unset or false will silently reintroduce every problem
-described above. This is not a preference between two acceptable options; Bloop-as-BSP-backend is
-prohibited the same as the `bloop` CLI is.
-
-**Documented exception:** none needed — `testOnly` and `scalafmtOnly` were already the sbt-shell
-path; this skill now applies uniformly to compile, test, and those subcommands.
 
 ## Search and navigate: ordered, unconditional fallback
 
@@ -143,3 +116,13 @@ tool → ripgrep) for non-Scala languages. For Scala/Java specifically, this ski
 precise than tree-sitter pattern matching for named-symbol questions, which are the majority of
 Scala navigation asks. ast-grep remains the right tool the moment the question shifts from "where
 is X" to "find code shaped like this."
+
+## Scala style
+
+- Don't use `.iterator` unless really necessary. Prefer working with higher-order functions, like
+  `filter`, `map`, `flatMap`, directly on collections.
+- Prefer for-loops over `map`/`flatMap`, unless they fit in one line (one, or at most two, calls).
+- Don't call `.toList` unless it's necessary.
+- After adding a dependency to `build.sbt`, ALWAYS run the `import-build` tool.
+- Use `sbt --client` instead of `sbt` to connect to a running sbt server for faster execution.
+- NEVER use non-local returns.
